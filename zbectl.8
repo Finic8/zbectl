@@ -1,0 +1,87 @@
+.TH zbectl 8 "June 06, 2017" "version 1.0"
+.SH NAME
+zbectl - Control ZFS Boot Environments
+.SH SYNOPSIS
+\fBzbectl list\fB
+
+\fBzbectl create\fB \fI[source] [target]\fI
+
+\fBzbectl rename\fB \fI[source] [target]\fI
+
+\fBzbectl activate\fB \fI[target]\fI
+
+\fBzbectl destroy\fB \fI[target]\fI
+
+\fBzbectl preupdate\fB
+
+\fBzbectl kernel-upgrade\fB
+
+\fBzbectl kernel-remove\fB
+
+.SH DESCRIPTION
+
+\fBzbectl\fR is a utility for managing \fIZFS Boot Environments\fR in Arch Linux.
+
+It creates a folder with the name of the \fIBoot Environment\fR in \fI/boot\fR in which the kernels are stored.
+.P
+Because mkinitcpio needs the kernel to be in \fI/boot \fR, the package includes \fBalpm-hooks\fR to move the kernels accordingly.
+
+Boot entries for \fBsystemd-boot \fR are also created automatically.
+
+The script assumes that your Boot Environments are located under \fIpoolname/ROOT/\fR
+
+.SS SUBCOMMANDS
+.TP
+.B zbectl list
+Lists all 
+.I ZFS Boot Environments.
+.TP
+\fBzbectl create\fP \fI[source] [target]\fI
+Creates a new ZFS Boot Environment named
+.I target.
+The dataset and the kernels are copied from the
+.I source
+environment.
+Bootentries are created accordingly.
+.TP
+\fBzbectl rename\fB \fI[source] [target]\fI
+Renames the \fIsource\fR
+environment to \fItarget\fR.
+Boot entries get renamed automatically.
+.TP
+\fBzbectl activate\fB \fI[target]\fI
+Sets the \fItarget\fR as the default boot entry.
+.TP
+\fBzbectl destroy\fB \fI[target]\fI
+Delets the \fItarget\fR environment.
+.TP
+\fBzbectl preupdate\fB
+Copies the kernels of the running boot environment to
+\fI/boot.\fR
+This is necessary because
+\fBmkinitcpio\fR
+expects them to be there.
+Gets run be the preupdate hook.
+.TP
+\fBzbectl kernel-upgrade\fB
+Moves new/upgraded kernels back to \fI/boot/target\fR and creates boot entries for newly installed kernels.
+Gets run by the install/upgrade hook.
+.TP
+\fBzbectl kernel-remove\fB
+Moves kernels back to \fI/boot/target\fR and delets boot entries for no longer installed kernels.
+Gets run by the remove hook.
+
+.SH EXIT CODES
+The following exit codes are returned:
+.TP
+\fB0
+Successful execution.
+.TP
+\fB1
+An error occurred.
+
+.SH AUTHOR
+Nicolai <https://github.com/Finic8/zbectl>
+
+.SH SEE ALSO
+\fBbootctl\fR(1), \fBzfs\fR(8)\fR
