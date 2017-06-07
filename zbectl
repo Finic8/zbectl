@@ -1,0 +1,215 @@
+#!/bin/bash
+
+# util for managing boot environments in Arch Linux using ZFS
+# some of the code is based on beadm https://github.com/vermaden/beadm
+check_root() {
+	if [ $(id -u) != 0 ]; then
+		echo "ERROR: Must be ran as root"
+		exit 1
+	fi
+}
+
+usage() {
+	echo "zbetcl: util for managing boot environments in Arch Linux using ZFS"
+	echo "zbectl list"
+	echo "zbetcl create [source] [beName]"
+	echo "zbectl rename [source] [beName]"
+	echo "zbetcl activate [beName]"
+	echo "zbetcl destroy [beName]"
+	echo "zbectl preupdate"
+	echo "zbectl kernel-upgrade"
+	echo "zbectl kernel-remove"
+	exit 0
+}
+[ $# -eq 0 ] && usage
+
+ROOTFS=$( mount | awk '/ \/ / {print $1}' )
+
+if echo ${ROOTFS} | grep -q "^/dev/"
+then
+	echo "ERROR: The system does not boot from a ZFS pool"
+	exit 1
+fi
+
+POOL=$( echo ${ROOTFS} | awk -F '/' '{print $1}' )
+
+if [ $( echo ${ROOTFS} | awk -F '/' '{print NF}' ) -lt 3 ]
+then
+	echo "ERROR: This system is not configured for boot environments"
+	exit 1
+fi
+
+checkname() {
+	local sane_name=$( echo "${1}" | tr -c -d 'a-zA-Z0-9-_.,' )
+	if [[ "$1" != "$sane_name" ]]
+	then
+		echo "ERROR: name: '${NAME_NEW}' contains invalid charaters"
+		echo "Possible name: '${NAME_SANITY}'"
+		exit 1
+	fi
+	unset sane_name
+}
+check_dset_exist() {
+	if ! zfs list -H -o name $POOL/ROOT/$1 &> /dev/null
+	then
+		echo  "ERROR: Boot environment '$1' does not exist"
+		exit 1
+	fi
+}
+add_bootentry() {
+	# creates basic bootentry
+	(
+	echo "title	Arch Linux ($TARGET) [$KERNEL]"
+	echo "linux	/$TARGET/vmlinuz-$KERNEL"
+	if [ -e /boot/intel-ucode.img ]
+	then
+		echo "initrd	/intel-ucode.img"
+	fi
+	echo "initrd	/$TARGET/initramfs-$KERNEL.img"
+	echo "options	zfs=zroot/ROOT/$TARGET rw"
+	) > "/boot/loader/entries/$TARGET-$KERNEL.conf"
+	echo "Creating bootentry ($TARGET) [$KERNEL]"
+}
+
+if [ $1 == 'list' ]
+then
+	zfs list -r -o name,used,available,referenced,mounted,origin "$POOL"/ROOT
+	exit 0
+
+else
+	check_root
+fi
+if [ $1 == 'destroy' ]
+then
+	[ $# -ne 2 ] && usage
+	TARGET=$(basename "${2}")
+	check_dset_exist $TARGET
+	if [ "$POOL/ROOT/$TARGET" == $ROOTFS ]
+	then
+		echo "ERROR: Can not destroy boot environment '$TARGET' because it is in use"
+		exit 1
+	fi
+	# promote dependent clones
+	zfs list -H -t all -o name,origin -r ${POOL} | while read NAME ORIGIN
+	do
+		if echo "${ORIGIN}" | grep -q -E "${POOL}/ROOT/${TARGET}/.*@" 2> /dev/null
+		then
+			zfs promote ${NAME}
+		fi
+	done
+
+	zfs destroy -r $POOL/ROOT/$TARGET
+	rm -r /boot/$TARGET
+	rm /boot/loader/entries/$TARGET-*.conf
+	
+elif [ $1 == 'create' ] || [ $1 == 'rename' ]
+then
+	[ $# -ne 3 ] && usage
+	SOURCE=$(basename "${2}")
+	TARGET=$(basename "${3}")
+	check_dset_exist $SOURCE
+	checkname $TARGET
+	if zfs list -H -o name $POOL/ROOT/$TARGET &> /dev/null
+	then
+		echo "ERROR: Boot environment '$TARGET' does already exist"
+		exit 1
+	fi
+	if [ $1 == 'create' ]
+	then
+		FMT=$(date "+%Y-%m-%d-%H:%M:%S")
+		zfs snapshot -r $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET 
+		zfs clone $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET $POOL/ROOT/$TARGET
+	else
+
+		zfs rename $POOL/ROOT/$SOURCE $POOL/ROOT/$TARGET
+	fi
+	# update /boot
+	mkdir /boot/$TARGET
+	cp /boot/$SOURCE/* /boot/$TARGET/
+
+	# creates new bootentries for all kernels
+	# entries are not generated from scratch to keep kernel options (eg. cryptroot=)
+	for KERNEL in /boot/loader/entries/$SOURCE-*.conf
+	do
+		KERNEL="${KERNEL#/boot/loader/entries/$SOURCE-}"
+		KERNEL="${KERNEL%.conf}"
+		ENTRY="/boot/loader/entries/$TARGET-$KERNEL.conf"
+		cp /boot/loader/entries/$SOURCE-$KERNEL.conf $ENTRY
+		sed -i "s/($SOURCE)/($TARGET)/" "$ENTRY"
+		sed -i "s/\/$SOURCE\//\/$TARGET\//" "$ENTRY"
+		sed -i "s/zfs=$POOL\/ROOT\/$SOURCE/zfs=$POOL\/ROOT\/$TARGET/" "$ENTRY"
+	done
+	if [ $1 == 'rename' ]
+	then
+		rm /boot/loader/entries/$SOURCE-*.conf
+		rm -r /boot/$SOURCE 
+	fi
+
+elif [ $1 == 'activate' ]
+then
+	[ $# -ne 2 ] && usage
+	TARGET=$(basename "${2}")
+	check_dset_exist $TARGET
+	sed -i "s/default.*/default\ $TARGET/" /boot/loader/loader.conf
+
+elif [ $1 == 'preupdate' ]
+then
+	# mkinitcpio needs kernels in /boot
+	[ $# -ne 1 ] && usage
+	TARGET=$(basename "$ROOTFS")
+	cp /boot/$TARGET/* /boot/
+
+elif [ $1 == 'kernel-upgrade' ]
+then
+	[ $# -ne 1 ] && usage
+	TARGET=$(basename "$ROOTFS")
+	# on the initial run /boot/$TARGET has to be created
+	if [ ! -d /boot/$TARGET ]
+	then
+		mkdir /boot/$TARGET
+	fi
+
+	echo "Moving kernels to /boot/$TARGET"
+	mv /boot/initramfs-*.img "/boot/$TARGET/"
+	mv /boot/vmlinuz-* "/boot/$TARGET/"
+
+	# creates boot entries for new kernels
+	for KERNEL in /boot/$TARGET/vmlinuz-*
+	do
+		KERNEL="${KERNEL#/boot/$TARGET/vmlinuz-*}"
+		ENTRY="/boot/loader/entries/$TARGET-$KERNEL.conf"
+		if [ -s "$ENTRY" ]
+		then
+			# entry already exists
+			continue
+		fi
+		add_bootentry
+		# if a boot entry for the target already exists, the options of the first one are copied
+		SOURCEENTRY="$(ls /boot/loader/entries/$TARGET-* 2> /dev/null | head -n 1)"
+		if [ -s "$SOURCEENTRY" ]
+		then
+			sed -i "/options/ d" "$ENTRY"
+			sed -n "/options/ p" "$SOURCEENTRY" >> "$ENTRY"
+		fi
+	done
+elif [ $1 == 'kernel-remove' ]
+then
+	[ $# -ne 1 ] && usage
+	TARGET=$(basename "$ROOTFS")
+	# if a kernel is uninstalled, pacman deletes if from /boot
+	# therfore all kernels that are only in /boot/$TARGET have to be deleted
+	for KERNEL in $(diff -y <(ls /boot/ ) <(ls /boot/$TARGET/ ) | awk '/>|\\ vmlinuz-/ {print $NF}')
+	do
+		KERNEL=${KERNEL#vmlinuz-}
+		echo "Removing bootentry ($TARGET) [$KERNEL]"
+		rm "/boot/loader/entries/$TARGET-$KERNEL.conf"
+		rm "/boot/$TARGET/initramfs-$KERNEL.img"
+		rm "/boot/$TARGET/initramfs-$KERNEL-fallback.img"
+		rm "/boot/$TARGET/vmlinuz-$KERNEL"
+	done
+	rm /boot/initramfs-*.img
+	rm /boot/vmlinuz-*
+
+else
+	usage
+fi
