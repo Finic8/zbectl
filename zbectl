@@ -1,7 +1,22 @@
 #!/bin/bash
 
-# util for managing boot environments in Arch Linux using ZFS
-# some of the code is based on beadm https://github.com/vermaden/beadm
+# Utility for managing ZFS Boot Environments in Arch Linux
+# 
+# Source at <https://github.com/Finic8/zbectl>
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 check_root() {
 	if [ $(id -u) != 0 ]; then
 		echo "ERROR: Must be ran as root"
@@ -197,7 +212,7 @@ then
 	[ $# -ne 1 ] && usage
 	TARGET=$(basename "$ROOTFS")
 	# if a kernel is uninstalled, pacman deletes if from /boot
-	# therfore all kernels that are only in /boot/$TARGET have to be deleted
+	# therefore all kernels that are only in /boot/$TARGET have to be deleted
 	for KERNEL in $(diff -y <(ls /boot/ ) <(ls /boot/$TARGET/ ) | awk '/>|\\ vmlinuz-/ {print $NF}')
 	do
 		KERNEL=${KERNEL#vmlinuz-}
