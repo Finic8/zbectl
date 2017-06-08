@@ -1,5 +1,5 @@
 # Maintainer: Your Name <youremail@domain.com>
-pkgname=zbectl
+pkgname=zbectl-git
 pkgver=0.1
 pkgrel=1
 pkgdesc="script for managing boot environments using zfs"
@@ -8,7 +8,7 @@ url=""
 license=('GPL')
 groups=()
 depends=(zfs bash)
-makedepends=()
+makedepends=(git)
 optdepends=()
 provides=()
 conflicts=()
@@ -17,9 +17,14 @@ backup=()
 options=()
 install=
 changelog=
-source=(git://git.nicolai.tech:zbectl.git)
+source=($pkgname::git+git://git.nicolai.tech/zbectl.git)
 noextract=()
 md5sums=('SKIP')
+
+pkgver() {
+	cd "$pkgnamej"
+	git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+}
 
 package() {
 	cd "$pkgname"
