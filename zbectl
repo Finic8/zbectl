@@ -25,12 +25,12 @@ check_root() {
 }
 
 usage() {
-	echo "zbetcl: util for managing boot environments in Arch Linux using ZFS"
+	echo "zbectl: util for managing boot environments in Arch Linux using ZFS"
 	echo "zbectl list"
-	echo "zbetcl create [source] [beName]"
+	echo "zbectl create [source] [beName]"
 	echo "zbectl rename [source] [beName]"
-	echo "zbetcl activate [beName]"
-	echo "zbetcl destroy [beName]"
+	echo "zbectl activate [beName]"
+	echo "zbectl destroy [beName]"
 	echo "zbectl preupdate"
 	echo "zbectl kernel-upgrade"
 	echo "zbectl kernel-remove"
