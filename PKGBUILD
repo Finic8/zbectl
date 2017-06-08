@@ -22,7 +22,7 @@ noextract=()
 md5sums=('SKIP')
 
 pkgver() {
-	cd "$pkgnamej"
+	cd "$pkgname"
 	git describe --long | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
 }
 
