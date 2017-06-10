@@ -4,13 +4,13 @@ zbectl - Control ZFS Boot Environments
 .SH SYNOPSIS
 \fBzbectl list\fB
 
-\fBzbectl create\fB \fI[source] [target]\fI
+\fBzbectl create\fB \fI[source] target\fI
 
-\fBzbectl rename\fB \fI[source] [target]\fI
+\fBzbectl rename\fB \fIsource target\fI
 
-\fBzbectl activate\fB \fI[target]\fI
+\fBzbectl activate\fB \fItarget\fI
 
-\fBzbectl destroy\fB \fI[target]\fI
+\fBzbectl destroy\fB \fItarget\fI
 
 \fBzbectl preupdate\fB
 
@@ -36,23 +36,25 @@ The script assumes that your Boot Environments are located under \fIpoolname/ROO
 Lists all 
 .I ZFS Boot Environments.
 .TP
-\fBzbectl create\fP \fI[source] [target]\fI
+\fBzbectl create\fP \fI[source] target\fI
 Creates a new ZFS Boot Environment named
 .I target.
 The dataset and the kernels are copied from the
+.I running
+environment unless a different
 .I source
-environment.
+environment is specified.
 Bootentries are created accordingly.
 .TP
-\fBzbectl rename\fB \fI[source] [target]\fI
+\fBzbectl rename\fB \fIsource target\fI
 Renames the \fIsource\fR
 environment to \fItarget\fR.
 Boot entries get renamed automatically.
 .TP
-\fBzbectl activate\fB \fI[target]\fI
+\fBzbectl activate\fB \fItarget\fI
 Sets the \fItarget\fR as the default boot entry.
 .TP
-\fBzbectl destroy\fB \fI[target]\fI
+\fBzbectl destroy\fB \fItarget\fI
 Delets the \fItarget\fR environment.
 .TP
 \fBzbectl preupdate\fB

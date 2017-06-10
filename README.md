@@ -26,16 +26,16 @@ Then run
 ### zbectl list
 Lists all ZFS Boot Environments.
 
-### zbectl create [source] [target]
-Creates a new ZFS Boot Environment named target. The dataset and the kernels are copied from the source environment. Bootentries are created accordingly.
+### zbectl create [source] target
+Creates a new ZFS Boot Environment named target. The dataset and the kernels are copied from the running environment unless different source environment is specified. Bootentries are created accordingly.
 
-### zbectl rename [source] [target]
+### zbectl rename source target
 Renames the source environment  to  target. Boot entries get renamed automatically.
 
-### zbectl activate [target]
+### zbectl activate target
 Sets the target as the default boot entry.
 
-### zbectl destroy [target]
+### zbectl destroy target
 Delets the target environment.
 
 ### zbectl preupdate
