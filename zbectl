@@ -161,7 +161,7 @@ then
 			echo "ERROR: Boot environment '$1' does not exist"
 			exit 1
 		fi
-	elif [ $# -eq 2]
+	elif [ $# -eq 2 ]
 	then
 		TARGET=$(basename "${2}")
 		checktarget $TARGET
