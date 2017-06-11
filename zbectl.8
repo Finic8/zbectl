@@ -8,7 +8,7 @@ zbectl - Control ZFS Boot Environments
 
 \fBzbectl rename\fB \fIsource target\fI
 
-\fBzbectl activate\fB \fItarget\fI
+\fBzbectl activate\fB \fItarget [kernel]\fI
 
 \fBzbectl destroy\fB \fItarget\fI
 
@@ -51,8 +51,8 @@ Renames the \fIsource\fR
 environment to \fItarget\fR.
 Boot entries get renamed automatically.
 .TP
-\fBzbectl activate\fB \fItarget\fI
-Sets the \fItarget\fR as the default boot entry.
+\fBzbectl activate\fB \fItarget [kernel]\fI
+Sets the \fItarget\fR as the default boot entry. Kernel must be specifed if more than one is available.
 .TP
 \fBzbectl destroy\fB \fItarget\fI
 Delets the \fItarget\fR environment.

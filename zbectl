@@ -101,6 +101,13 @@ check_dset_exist() {
 		exit 1
 	fi
 }
+printkernels() {
+	for KERNEL in /boot/loader/entries/$TARGET-*.conf
+	do
+		KERNEL="${KERNEL#/boot/loader/entries/$TARGET-}"
+		echo "${KERNEL%.conf}"
+	done
+}
 add_bootentry() {
 	# creates basic bootentry
 	(
@@ -185,10 +192,33 @@ then
 
 elif [ $1 == 'activate' ]
 then
-	[ $# -ne 2 ] && usage
+	[ $# -eq 1 ] || [ $# -gt 3 ] && usage
 	TARGET=$(basename "${2}")
 	check_dset_exist $TARGET
-	sed -i "s/default.*/default\ $TARGET/" /boot/loader/loader.conf
+	if [ $# -eq 3 ]
+	then
+		KERNEL="${3}"
+		if [ ! -s "/boot/loader/entries/$TARGET-$KERNEL.conf" ]
+		then
+			echo "ERROR: Kernel '$KERNEL' does not exist"
+			echo "Available kernels:"
+			printkernels
+			exit 1
+		fi
+	elif [ $# -eq 2 ]
+	then
+		if [ $(ls /boot/loader/entries/"$TARGET"-*.conf 2> /dev/null | wc -l) -eq 1 ]
+		then
+			KERNEL="$(printkernels)"
+		else
+			echo "ERROR: More than one kernel available:"
+			printkernels
+			exit 1
+		fi
+	else
+		usage
+	fi
+	sed -i "s/default.*/default\ $TARGET-$KERNEL/" /boot/loader/loader.conf
 
 elif [ $1 == 'preupdate' ]
 then
@@ -214,7 +244,7 @@ then
 	# creates boot entries for new kernels
 	for KERNEL in /boot/$TARGET/vmlinuz-*
 	do
-		KERNEL="${KERNEL#/boot/$TARGET/vmlinuz-*}"
+		KERNEL="${KERNEL#/boot/$TARGET/vmlinuz-}"
 		ENTRY="/boot/loader/entries/$TARGET-$KERNEL.conf"
 		if [ -s "$ENTRY" ]
 		then
