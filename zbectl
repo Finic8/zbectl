@@ -75,7 +75,7 @@ createclone() {
 	# create a clone of the $TARGET boot environment
 	FMT=$(date "+%Y-%m-%d-%H:%M:%S")
 	zfs snapshot -r $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET
-	zfs clone $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET $POOL/ROOT/$TARGET
+	zfs clone -o canmount=noauto -o mountpoint=/ $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET $POOL/ROOT/$TARGET
 }
 copykernels() {
 	# copies the kernels to a new boot environment, and updates boot entries
