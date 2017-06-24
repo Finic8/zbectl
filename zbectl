@@ -126,6 +126,9 @@ add_bootentry() {
 if [ $1 == 'list' ]
 then
 	zfs list -r -o name,used,available,referenced,mounted,origin "$POOL"/ROOT
+	echo
+	echo "Default boot entry:"
+	awk '/default/ {print $2}' /boot/loader/loader.conf
 	exit 0
 
 else
