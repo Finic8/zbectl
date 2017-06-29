@@ -147,7 +147,7 @@ then
 	# promote dependent clones
 	zfs list -H -t all -o name,origin -r ${POOL} | while read NAME ORIGIN
 	do
-		if echo "${ORIGIN}" | grep -q -E "${POOL}/ROOT/${TARGET}/.*@" 2> /dev/null
+		if echo "${ORIGIN}" | grep -q -E "${POOL}/ROOT/${TARGET}(/.*@|@)" 2> /dev/null
 		then
 			zfs promote ${NAME}
 		fi
