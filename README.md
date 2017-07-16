@@ -3,24 +3,29 @@
 ## Functionality
 zbectl is a utility for managing ZFS Boot Environments in Arch Linux.
 
-It creates a folder with the name of the Boot Environment in /boot in which the kernels are stored.
-
-Because mkinitcpio needs the kernel to	be in /boot, the package includes alpm-hooks to move the kernels accordingly.
-
-Boot entries for systemd-boot  are also created automatically.
-
-The script assumes that your Boot Environments are located under poolname/ROOT/
+GRUB is used to boot the different environments.
 
 ## Requirements
-At the moment you have to be using systemd-boot.
+* The EFI partition must be mounted under /boot/efi.
+* GRUB has to be used as the bootloader.
+* The script assumes that your Boot Environments are located under poolname/ROOT/.
 
-The script assumes that your Boot Environments are located under poolname/ROOT/.
+
+__To Be Noted__
+
+The GRUB package is unable to boot from ZFS as described on the Arch Wiki:
+
+<https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_ZFS#error:_failed_to_get_canonical_path_of>
+
+To avoid recompiling GRUB, this error gets resolved by a udev rule which creates a symlink.
 
 ## Installation
 Simply install the package from the aur.
-Then run 
+Then run: 
 
-    zbectl upgrade-kernel
+    zbectl install
+
+It might be necessary to run this after a GRUB update as well.
 
 ## Usage
 ### zbectl list
@@ -38,14 +43,8 @@ Sets the target as the default boot entry. Kernel must be specifed if more than 
 ### zbectl destroy target
 Delets the target environment.
 
-### zbectl preupdate
-Copies the kernels of the running boot environment to /boot. This is necessary because mkinitcpio expects them to be there. Gets run be the preupdate hook.
-
-### zbectl kernel-upgrade
-Moves new/upgraded kernels back to /boot/target and creates boot entries for newly installed kernels. Gets run by the install/upgrade hook.
-
-### zbectl kernel-remove
-Moves  kernels  back to /boot/target and delets boot entries for no longer installed kernels. Gets run by the remove hook.
+### zbectl install
+Installs grub to /boot/efi and and updates the config
 
 ## Exit Codes
 The following exit codes are returned:
@@ -53,4 +52,3 @@ The following exit codes are returned:
 0      Successful execution.
 
 1      An error occurred.
-

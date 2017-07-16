@@ -8,27 +8,21 @@ zbectl - Control ZFS Boot Environments
 
 \fBzbectl rename\fB \fIsource target\fI
 
-\fBzbectl activate\fB \fItarget [kernel]\fI
+\fBzbectl activate\fB
+
+\fBzbectl activate\fB \fItarget\fI
 
 \fBzbectl destroy\fB \fItarget\fI
 
-\fBzbectl preupdate\fB
-
-\fBzbectl kernel-upgrade\fB
-
-\fBzbectl kernel-remove\fB
+\fBzbectl install\fB
 
 .SH DESCRIPTION
 
 \fBzbectl\fR is a utility for managing \fIZFS Boot Environments\fR in Arch Linux.
 
-It creates a folder with the name of the \fIBoot Environment\fR in \fI/boot\fR in which the kernels are stored.
-.P
-Because mkinitcpio needs the kernel to be in \fI/boot \fR, the package includes \fBalpm-hooks\fR to move the kernels accordingly.
+Boot entries for \fBgrub \fR are also created automatically.
 
-Boot entries for \fBsystemd-boot \fR are also created automatically.
-
-The script assumes that your Boot Environments are located under \fIpoolname/ROOT/\fR
+The script assumes that your Boot Environments are located under \fIpoolname/ROOT/\fR and that your efi partition is mounted under \fI/boot/efi\fR
 
 .SS SUBCOMMANDS
 .TP
@@ -51,27 +45,17 @@ Renames the \fIsource\fR
 environment to \fItarget\fR.
 Boot entries get renamed automatically.
 .TP
-\fBzbectl activate\fB \fItarget [kernel]\fI
-Sets the \fItarget\fR as the default boot entry. Kernel must be specifed if more than one is available.
+\fBzbectl activate\fB
+Lists available environments.
+.TP
+\fBzbectl activate\fB \fItarget\fI
+Sets the \fItarget\fR as the default boot entry.
 .TP
 \fBzbectl destroy\fB \fItarget\fI
 Delets the \fItarget\fR environment.
 .TP
-\fBzbectl preupdate\fB
-Copies the kernels of the running boot environment to
-\fI/boot.\fR
-This is necessary because
-\fBmkinitcpio\fR
-expects them to be there.
-Gets run be the preupdate hook.
-.TP
-\fBzbectl kernel-upgrade\fB
-Moves new/upgraded kernels back to \fI/boot/target\fR and creates boot entries for newly installed kernels.
-Gets run by the install/upgrade hook.
-.TP
-\fBzbectl kernel-remove\fB
-Moves kernels back to \fI/boot/target\fR and delets boot entries for no longer installed kernels.
-Gets run by the remove hook.
+.B zbectl install
+Installs grub to efi partition and updates \fIgrub.cfg\fR
 
 .SH EXIT CODES
 The following exit codes are returned:

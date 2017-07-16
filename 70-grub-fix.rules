@@ -1,0 +1,7 @@
+ENV{DEVTYPE}=="partition", IMPORT{parent}="ID_*", \
+ENV{ID_FS_TYPE}=="zfs_member", \
+SYMLINK+="$env{ID_FS_UUID}"
+
+ENV{DEVTYPE}=="partition", IMPORT{parent}="ID_*", \
+ENV{ID_FS_TYPE}=="zfs_member", \
+SYMLINK+="$env{ID_BUS}-$env{ID_SERIAL} $env{ID_BUS}-$env{ID_SERIAL}-part%n"

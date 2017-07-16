@@ -17,12 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-check_root() {
-	if [ $(id -u) != 0 ]; then
-		echo "ERROR: Must be ran as root"
-		exit 1
-	fi
-}
 usage() {
 	echo "zbectl: Utility for managing ZFS Boot Environments in Arch Linux"
 	echo "zbectl list"
@@ -30,14 +24,20 @@ usage() {
 	echo "zbectl rename [source] <target>"
 	echo "zbectl activate <target> [kernel]"
 	echo "zbectl destroy <target>"
-	echo "zbectl preupdate"
-	echo "zbectl kernel-upgrade"
-	echo "zbectl kernel-remove"
+	echo "zbectl install"
 	exit 0
 }
 [ $# -eq 0 ] && usage
 
+check_root() {
+	if [ $(id -u) != 0 ]; then
+		echo "ERROR: Must be ran as root"
+		exit 1
+	fi
+}
 ROOTFS=$( mount | awk '/ \/ / {print $1}' )
+ESP=/boot/efi
+GRUBCFG=$ESP/grub/grub.cfg
 
 if echo ${ROOTFS} | grep -q "^/dev/"
 then
@@ -53,9 +53,10 @@ then
 	exit 1
 fi
 
-checktarget() {
+check_target() {
 	# check if name is usable
-	local sane_name=$( echo "${1}" | tr -c -d 'a-zA-Z0-9-_.,' )
+	local TARGET=${1}
+	local sane_name=$( echo "$TARGET" | tr -c -d 'a-zA-Z0-9-_.,' )
 	if [[ "$1" != "$sane_name" ]]
 	then
 		echo "ERROR: name: '${NAME_NEW}' contains invalid charaters"
@@ -71,66 +72,46 @@ checktarget() {
 		exit 1
 	fi
 }
-createclone() {
+check_env_exist() {
+	local TARGET=${1}
+	if ! zfs list -H -o name $POOL/ROOT/$TARGET &> /dev/null
+	then
+		echo  "ERROR: Boot environment '$TARGET' does not exist"
+		exit 1
+	fi
+}
+check_env_in_use() {
+	local TARGET=${1}
+	if [ "$POOL/ROOT/$TARGET" == $ROOTFS ]
+	then
+		echo "ERROR: Target boot environment '$TARGET' is in use"
+		exit 1
+	fi
+}
+create_clone() {
 	# create a clone of the $TARGET boot environment
 	FMT=$(date "+%Y-%m-%d-%H:%M:%S")
 	zfs snapshot -r $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET
 	zfs clone -o canmount=noauto -o mountpoint=/ $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET $POOL/ROOT/$TARGET
 }
-copykernels() {
-	# copies the kernels to a new boot environment, and updates boot entries
-	mkdir /boot/$TARGET
-	cp /boot/$SOURCE/* /boot/$TARGET/
-	# create new bootentries for all kernels
-	# entries are not generated from scratch to keep kernel options (eg. cryptroot=)
-	for KERNEL in /boot/loader/entries/$SOURCE-*.conf
-	do
-		KERNEL="${KERNEL#/boot/loader/entries/$SOURCE-}"
-		KERNEL="${KERNEL%.conf}"
-		ENTRY="/boot/loader/entries/$TARGET-$KERNEL.conf"
-		cp /boot/loader/entries/$SOURCE-$KERNEL.conf $ENTRY
-		sed -i "s/($SOURCE)/($TARGET)/" "$ENTRY"
-		sed -i "s/\/$SOURCE\//\/$TARGET\//" "$ENTRY"
-		sed -i "s/zfs=$POOL\/ROOT\/$SOURCE/zfs=$POOL\/ROOT\/$TARGET/" "$ENTRY"
-	done
-}
-check_dset_exist() {
-	if ! zfs list -H -o name $POOL/ROOT/$1 &> /dev/null
-	then
-		echo  "ERROR: Boot environment '$1' does not exist"
-		exit 1
-	fi
-}
-printkernels() {
-	for KERNEL in /boot/loader/entries/$TARGET-*.conf
-	do
-		KERNEL="${KERNEL#/boot/loader/entries/$TARGET-}"
-		echo "${KERNEL%.conf}"
-	done
-}
-add_bootentry() {
-	# creates basic bootentry
-	(
-	echo "title	Arch Linux ($TARGET) [$KERNEL]"
-	echo "linux	/$TARGET/vmlinuz-$KERNEL"
-	if [ -e /boot/intel-ucode.img ]
-	then
-		echo "initrd	/intel-ucode.img"
-	fi
-	echo "initrd	/$TARGET/initramfs-$KERNEL.img"
-	echo "options	zfs=zroot/ROOT/$TARGET rw"
-	) > "/boot/loader/entries/$TARGET-$KERNEL.conf"
-	echo "Creating bootentry ($TARGET) [$KERNEL]"
+update_grub() {
+	grub-mkconfig -o $GRUBCFG &> /dev/null
+	exit 0
 }
 
 if [ $1 == 'list' ]
 then
-	zfs list -r -o name,used,available,referenced,mounted,origin "$POOL"/ROOT
+	zfs list -r -o name,used,available,referenced,mounted "$POOL"/ROOT
 	echo
-	echo "Default boot entry:"
-	awk '/default/ {print $2}' /boot/loader/loader.conf
+	# determine default
+	if [ ! -s $GRUBCFG ];
+	then
+		echo "ERROR: grub.cfg does not exist. Run zbectl install first"
+		exit 1
+	fi
+	DEFAULT="$(grep GRUB_DEFAULT /etc/default/grub)"
+	echo "Default entry: ${DEFAULT#GRUB_DEFAULT=}"
 	exit 0
-
 else
 	check_root
 fi
@@ -138,12 +119,8 @@ if [ $1 == 'destroy' ]
 then
 	[ $# -ne 2 ] && usage
 	TARGET=$(basename "${2}")
-	check_dset_exist $TARGET
-	if [ "$POOL/ROOT/$TARGET" == $ROOTFS ]
-	then
-		echo "ERROR: Can not destroy boot environment '$TARGET' because it is in use"
-		exit 1
-	fi
+	check_env_exist $TARGET
+	check_env_in_use $TARGET
 	# promote dependent clones
 	zfs list -H -t all -o name,origin -r ${POOL} | while read NAME ORIGIN
 	do
@@ -152,135 +129,66 @@ then
 			zfs promote ${NAME}
 		fi
 	done
-
 	zfs destroy -r $POOL/ROOT/$TARGET
-	rm -r /boot/$TARGET
-	rm /boot/loader/entries/$TARGET-*.conf
+	update_grub
 	
 elif [ $1 == 'create' ]
 then
 	if [ $# -eq 3 ]
 	then
 		TARGET=$(basename "${3}")
-		checktarget $TARGET
+		check_target $TARGET
 		SOURCE=$(basename "${2}")
-		if zfs list -t filesystem -H $POOL/ROOT/$SOURCE &> /dev/null
-		then
-			createclone
-		else
-			echo "ERROR: Boot environment '$1' does not exist"
-			exit 1
-		fi
+		check_env_exist $SOURCE
 	elif [ $# -eq 2 ]
 	then
 		TARGET=$(basename "${2}")
-		checktarget $TARGET
+		check_target $TARGET
 		SOURCE=$(basename "$ROOTFS")
-		createclone
 	else
 		usage
 	fi
-	copykernels
+	create_clone
+	update_grub
 
 elif [ $1 == 'rename' ]
 then
 	SOURCE=$(basename "${2}")
-	check_dset_exist $SOURCE
+	check_env_exist $SOURCE
+	check_env_in_use $SOURCE
 	TARGET=$(basename "${3}")
-	checktarget $TARGET
+	check_target $TARGET
 	zfs rename $POOL/ROOT/$SOURCE $POOL/ROOT/$TARGET
-	copykernels
-	rm /boot/loader/entries/$SOURCE-*.conf
-	rm -r /boot/$SOURCE 
+	update_grub
+
+elif [ $1 == 'install' ]
+then
+	grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP --bootloader-id=boot
+	# prevent grub from creating unbootable and therfore useless entries
+	ln -sf /dev/null /etc/grub.d/10_linux
+	# trigger the newly installed udev rule
+	udevadm trigger
+	update_grub
 
 elif [ $1 == 'activate' ]
 then
-	[ $# -eq 1 ] || [ $# -gt 3 ] && usage
-	TARGET=$(basename "${2}")
-	check_dset_exist $TARGET
-	if [ $# -eq 3 ]
+	[ $# -ge 3 ] && usage
+	if [ $# -eq 1 ]
 	then
-		KERNEL="${3}"
-		if [ ! -s "/boot/loader/entries/$TARGET-$KERNEL.conf" ]
-		then
-			echo "ERROR: Kernel '$KERNEL' does not exist"
-			echo "Available kernels:"
-			printkernels
-			exit 1
-		fi
-	elif [ $# -eq 2 ]
-	then
-		if [ $(ls /boot/loader/entries/"$TARGET"-*.conf 2> /dev/null | wc -l) -eq 1 ]
-		then
-			KERNEL="$(printkernels)"
-		else
-			echo "ERROR: More than one kernel available:"
-			printkernels
-			exit 1
-		fi
-	else
-		usage
+		echo "Avialiable environments:"
+		grep ^menuentry $GRUBCFG | cut -d "'" -f2
+		exit 0
 	fi
-	sed -i "s/default.*/default\ $TARGET-$KERNEL/" /boot/loader/loader.conf
-
-elif [ $1 == 'preupdate' ]
-then
-	# mkinitcpio needs kernels in /boot
-	[ $# -ne 1 ] && usage
-	TARGET=$(basename "$ROOTFS")
-	cp /boot/$TARGET/* /boot/
-
-elif [ $1 == 'kernel-upgrade' ]
-then
-	[ $# -ne 1 ] && usage
-	TARGET=$(basename "$ROOTFS")
-	# on the initial run /boot/$TARGET has to be created
-	if [ ! -d /boot/$TARGET ]
-	then
-		mkdir /boot/$TARGET
-	fi
-
-	echo "Moving kernels to /boot/$TARGET"
-	mv /boot/initramfs-*.img "/boot/$TARGET/"
-	mv /boot/vmlinuz-* "/boot/$TARGET/"
-
-	# creates boot entries for new kernels
-	for KERNEL in /boot/$TARGET/vmlinuz-*
+	while read ENTRY
 	do
-		KERNEL="${KERNEL#/boot/$TARGET/vmlinuz-}"
-		ENTRY="/boot/loader/entries/$TARGET-$KERNEL.conf"
-		if [ -s "$ENTRY" ]
+		if [ "$ENTRY" == "$TARGET" ]
 		then
-			# entry already exists
-			continue
+			sed -i "s/GRUB_DEFAULT.*/GRUB_DEFAULT=$ENTRY" /etc/default/grub
+			update_grub
 		fi
-		add_bootentry
-		# if a boot entry for the target already exists, the options of the first one are copied
-		SOURCEENTRY="$(ls /boot/loader/entries/$TARGET-* 2> /dev/null | head -n 1)"
-		if [ -s "$SOURCEENTRY" ]
-		then
-			sed -i "/options/ d" "$ENTRY"
-			sed -n "/options/ p" "$SOURCEENTRY" >> "$ENTRY"
-		fi
-	done
-elif [ $1 == 'kernel-remove' ]
-then
-	[ $# -ne 1 ] && usage
-	TARGET=$(basename "$ROOTFS")
-	# if a kernel is uninstalled, pacman deletes if from /boot
-	# therefore all kernels that are only in /boot/$TARGET have to be deleted
-	for KERNEL in $(diff -y <(ls /boot/ ) <(ls /boot/$TARGET/ ) | awk '/>|\\ vmlinuz-/ {print $NF}')
-	do
-		KERNEL=${KERNEL#vmlinuz-}
-		echo "Removing bootentry ($TARGET) [$KERNEL]"
-		rm "/boot/loader/entries/$TARGET-$KERNEL.conf"
-		rm "/boot/$TARGET/initramfs-$KERNEL.img"
-		rm "/boot/$TARGET/initramfs-$KERNEL-fallback.img"
-		rm "/boot/$TARGET/vmlinuz-$KERNEL"
-	done
-	rm /boot/initramfs-*.img
-	rm /boot/vmlinuz-*
-
+	done < <(grep ^menuentry $GRUBCFG | cut -d "'" -f2)
+	echo "ERROR: Specified entry does not exist"
+	exit 1
 else
 	usage
 fi
