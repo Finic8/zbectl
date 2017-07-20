@@ -163,7 +163,13 @@ then
 
 elif [ $1 == 'install' ]
 then
-	grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP --bootloader-id=boot
+	GRUB_ARGS=
+	if [ $# > 1 ];
+	then
+		shift
+		GRUB_ARGS="$@"
+	fi
+	grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP "${GRUB_ARGS}"
 	# prevent grub from creating unbootable and therfore useless entries
 	ln -sf /dev/null /etc/grub.d/10_linux
 	# trigger the newly installed udev rule
@@ -172,23 +178,28 @@ then
 
 elif [ $1 == 'activate' ]
 then
-	[ $# -ge 3 ] && usage
+	[ $# -gt 2 ] && usage
+	ENTRIES="$(grep ^menuentry $GRUBCFG | cut -d "'" -f2)"
 	if [ $# -eq 1 ]
 	then
 		echo "Avialiable environments:"
-		grep ^menuentry $GRUBCFG | cut -d "'" -f2
+		echo "$ENTRIES"
 		exit 0
 	fi
-	while read ENTRY
-	do
-		if [ "$ENTRY" == "$TARGET" ]
-		then
-			sed -i "s/GRUB_DEFAULT.*/GRUB_DEFAULT=$ENTRY" /etc/default/grub
-			update_grub
-		fi
-	done < <(grep ^menuentry $GRUBCFG | cut -d "'" -f2)
-	echo "ERROR: Specified entry does not exist"
-	exit 1
+	TARGET="${2}"
+	if ! ENTRY="$(echo "$ENTRIES" | grep "$TARGET")"
+	then
+		echo "ERROR: No environment matches the provided name."
+		exit 1
+	fi
+	if [ $(echo "$ENTRY" | wc -l) -gt 1 ]
+	then
+		echo "ERROR: More than one environment matches the provided name:"
+		echo "$ENTRY"
+		exit 1
+	fi
+	sed -i "s/GRUB_DEFAULT.*/GRUB_DEFAULT=${ENTRY}/" /etc/default/grub
+	update_grub
 else
 	usage
 fi

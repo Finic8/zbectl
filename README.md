@@ -37,14 +37,17 @@ Creates a new ZFS Boot Environment named target. The dataset and the kernels are
 ### zbectl rename source target
 Renames the source environment  to  target. Boot entries get renamed automatically.
 
-### zbectl activate target [kernel]
-Sets the target as the default boot entry. Kernel must be specifed if more than one is available.
-
 ### zbectl destroy target
 Delets the target environment.
 
-### zbectl install
-Installs grub to /boot/efi and and updates the config
+### zbectl activate
+Lists available environments.
+
+### zbectl activate target
+Sets the target as the default boot entry.
+
+### zbectl install [grub arguments]
+Installs grub to /boot/efi and and updates the config. Additional arguments are passed to grub-install.
 
 ## Exit Codes
 The following exit codes are returned:
