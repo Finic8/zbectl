@@ -32,10 +32,10 @@ It might be necessary to run this after a GRUB update as well.
 Lists all ZFS Boot Environments.
 
 ### zbectl create [source] target
-Creates a new ZFS Boot Environment named target. The dataset and the kernels are copied from the running environment unless different source environment is specified. Bootentries are created accordingly.
+Creates a new ZFS Boot Environment named target. If no source environment is provided, the booted environment will be used.
 
 ### zbectl rename source target
-Renames the source environment  to  target. Boot entries get renamed automatically.
+Renames the source environment to target.
 
 ### zbectl destroy target
 Delets the target environment.
@@ -44,7 +44,7 @@ Delets the target environment.
 Lists available environments.
 
 ### zbectl activate target
-Sets the target as the default boot entry.
+Sets the target as the default boot entry. Note that the entire name is not requirred, as long as the script can figure out which environment is ment.
 
 ### zbectl install [grub arguments]
 Installs grub to /boot/efi and and updates the config. Additional arguments are passed to grub-install.

@@ -8,11 +8,11 @@ zbectl - Control ZFS Boot Environments
 
 \fBzbectl rename\fB \fIsource target\fI
 
+\fBzbectl destroy\fB \fItarget\fI
+
 \fBzbectl activate\fB
 
 \fBzbectl activate\fB \fItarget\fI
-
-\fBzbectl destroy\fB \fItarget\fI
 
 \fBzbectl install\fB \fI[grub arguments]\fI
 
@@ -22,7 +22,7 @@ zbectl - Control ZFS Boot Environments
 
 Boot entries for \fBgrub \fR are also created automatically.
 
-The script assumes that your Boot Environments are located under \fIpoolname/ROOT/\fR and that your efi partition is mounted under \fI/boot/efi\fR
+The script assumes that your Boot Environments are located under \fIpoolname/ROOT/\fR and that your efi partition is mounted under \fI/boot/efi\fR.
 
 .SS SUBCOMMANDS
 .TP
@@ -31,19 +31,13 @@ Lists all
 .I ZFS Boot Environments.
 .TP
 \fBzbectl create\fP \fI[source] target\fI
-Creates a new ZFS Boot Environment named
-.I target.
-The dataset and the kernels are copied from the
-.I running
-environment unless a different
-.I source
-environment is specified.
-Bootentries are created accordingly.
+Creates a new ZFS Boot Environment named \fItarget\fR. If no \fIsource\fR environment is provided, the \fIbooted\fR environment will be used.
 .TP
 \fBzbectl rename\fB \fIsource target\fI
-Renames the \fIsource\fR
-environment to \fItarget\fR.
-Boot entries get renamed automatically.
+Renames the \fIsource\fR environment to \fItarget\fR.
+.TP
+\fBzbectl destroy\fB \fItarget\fI
+Delets the \fItarget\fR environment.
 .TP
 \fBzbectl activate\fB
 Lists available environments.
@@ -51,11 +45,8 @@ Lists available environments.
 \fBzbectl activate\fB \fItarget\fI
 Sets the \fItarget\fR as the default boot entry. Note that the entire name is not requirred, as long as the script can figure out which environment is ment.
 .TP
-\fBzbectl destroy\fB \fItarget\fI
-Delets the \fItarget\fR environment.
-.TP
 \fBzbectl install\fB \fI[grub arguments]\fI
-Installs grub to efi partition and updates \fIgrub.cfg\fR. Additional arguments are passed to \fBgrub-install\fB.
+Installs grub to efi partition and updates \fIgrub.cfg\fR. Additional arguments are passed to \fBgrub-install\fR.
 
 .SH EXIT CODES
 The following exit codes are returned:

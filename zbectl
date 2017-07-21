@@ -22,8 +22,8 @@ usage() {
 	echo "zbectl list"
 	echo "zbectl create [source] <target>"
 	echo "zbectl rename [source] <target>"
-	echo "zbectl activate <target>"
 	echo "zbectl destroy <target>"
+	echo "zbectl activate [target]"
 	echo "zbectl install [grub arguments]"
 	exit 0
 }
