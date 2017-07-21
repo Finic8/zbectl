@@ -22,9 +22,9 @@ usage() {
 	echo "zbectl list"
 	echo "zbectl create [source] <target>"
 	echo "zbectl rename [source] <target>"
-	echo "zbectl activate <target> [kernel]"
+	echo "zbectl activate <target>"
 	echo "zbectl destroy <target>"
-	echo "zbectl install"
+	echo "zbectl install [grub arguments]"
 	exit 0
 }
 [ $# -eq 0 ] && usage
@@ -163,12 +163,8 @@ then
 
 elif [ $1 == 'install' ]
 then
-	GRUB_ARGS=
-	if [ $# > 1 ];
-	then
-		shift
-		GRUB_ARGS="$@"
-	fi
+	shift
+	GRUB_ARGS="$@"
 	grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP "${GRUB_ARGS}"
 	# prevent grub from creating unbootable and therfore useless entries
 	ln -sf /dev/null /etc/grub.d/10_linux
