@@ -29,10 +29,17 @@ usage() {
 }
 [ $# -eq 0 ] && usage
 
+die() {
+	# 1st arg is the exitcode, others will be printed
+	ERROR_CODE=$1
+	shift
+	printf %"s\n" "ERROR: ${@}"
+	exit "$ERROR_CODE"
+}
+
 check_root() {
 	if [ $(id -u) != 0 ]; then
-		echo "ERROR: Must be ran as root"
-		exit 1
+		die 1 "Must be ran as root"
 	fi
 }
 ROOTFS=$( mount | awk '/ \/ / {print $1}' )
@@ -41,51 +48,44 @@ GRUBCFG=$ESP/grub/grub.cfg
 
 if echo ${ROOTFS} | grep -q "^/dev/"
 then
-	echo "ERROR: The system does not boot from a ZFS pool"
-	exit 1
+	die 1 "The system does not boot from a ZFS pool"
 fi
 
 POOL=$( echo ${ROOTFS} | awk -F '/' '{print $1}' )
 
 if [ $( echo ${ROOTFS} | awk -F '/' '{print NF}' ) -lt 3 ]
 then
-	echo "ERROR: This system is not configured for boot environments"
-	exit 1
+	die 1 "This system is not configured for boot environments"
 fi
 
 check_target() {
 	# check if name is usable
 	local TARGET=${1}
 	local sane_name=$( echo "$TARGET" | tr -c -d 'a-zA-Z0-9-_.,' )
-	if [[ "$1" != "$sane_name" ]]
+	if [[ "$TARGET" != "$sane_name" ]]
 	then
-		echo "ERROR: name: '${NAME_NEW}' contains invalid charaters"
-		echo "Possible name: '${NAME_SANITY}'"
-		exit 1
+		die 1 "name: '${TARGET}' contains invalid charaters" "Possible name: '${sane_name}'"
 	fi
 	unset sane_name
 
 	# check if boot environment does already exist
 	if zfs list -H -o name $POOL/ROOT/$TARGET &> /dev/null
 	then
-		echo "ERROR: Boot environment '$TARGET' does already exist"
-		exit 1
+		die 1 "Boot environment '$TARGET' does already exist"
 	fi
 }
 check_env_exist() {
 	local TARGET=${1}
 	if ! zfs list -H -o name $POOL/ROOT/$TARGET &> /dev/null
 	then
-		echo  "ERROR: Boot environment '$TARGET' does not exist"
-		exit 1
+		die 1 "Boot environment '$TARGET' does not exist"
 	fi
 }
 check_env_in_use() {
 	local TARGET=${1}
 	if [ "$POOL/ROOT/$TARGET" == $ROOTFS ]
 	then
-		echo "ERROR: Target boot environment '$TARGET' is in use"
-		exit 1
+		die 1 "Target boot environment '$TARGET' is in use"
 	fi
 }
 create_clone() {
@@ -106,8 +106,7 @@ then
 	# determine default
 	if [ ! -s $GRUBCFG ];
 	then
-		echo "ERROR: grub.cfg does not exist. Run zbectl install first"
-		exit 1
+		die 1 "grub.cfg does not exist. Run zbectl install first"
 	fi
 	DEFAULT="$(grep GRUB_DEFAULT /etc/default/grub)"
 	echo "Default entry: ${DEFAULT#GRUB_DEFAULT=}"
@@ -185,14 +184,11 @@ then
 	TARGET="${2}"
 	if ! ENTRY="$(echo "$ENTRIES" | grep "$TARGET")"
 	then
-		echo "ERROR: No environment matches the provided name."
-		exit 1
+		die 1 "No environment matches the provided name."
 	fi
 	if [ $(echo "$ENTRY" | wc -l) -gt 1 ]
 	then
-		echo "ERROR: More than one environment matches the provided name:"
-		echo "$ENTRY"
-		exit 1
+		die 1 "More than one environment matches the provided name:" "$ENTRY"
 	fi
 	sed -i "s/GRUB_DEFAULT.*/GRUB_DEFAULT=${ENTRY}/" /etc/default/grub
 	update_grub
