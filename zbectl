@@ -190,7 +190,7 @@ then
 	then
 		die 1 "More than one environment matches the provided name:" "$ENTRY"
 	fi
-	sed -i "s/GRUB_DEFAULT.*/GRUB_DEFAULT=${ENTRY}/" /etc/default/grub
+	sed -i "s/GRUB_DEFAULT.*/GRUB_DEFAULT=\"${ENTRY}\"/" /etc/default/grub
 	update_grub
 else
 	usage
