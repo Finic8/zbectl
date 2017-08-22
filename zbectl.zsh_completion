@@ -1,0 +1,53 @@
+#compdef zbectl
+
+GRUBCFG=/boot/efi/grub/grub.cfg
+
+_get_pool() {
+	mount | awk -F/ '/ \/ / {print $1}'
+}
+
+_list_all_environments() {
+	zfs list -H -r -o name "$(_get_pool)"/ROOT | awk -F/ '{if (NF == 3) print $NF}'
+}
+
+_list_unmounted_environments() {
+	zfs list -H -r -o mounted,name "$(_get_pool)"/ROOT | awk -F/ '/^no/{if (NF == 3) print $NF}'
+}
+
+subcmds=( "activate" "create" "destroy" "rename" "list" "install" )
+
+_zbectl() {
+#	typeset -A opt_args
+
+	if [[ $service == "zbectl" ]];
+	then
+		_arguments -C \
+			'*::command:->subcmd' && return 0
+
+		if (( CURRENT == 1 )); then
+			_wanted commands expl "zbectl subcommand" compadd -a subcmds
+			return
+		fi
+		service="$words[1]"
+		curcontext="${curcontext%:*}=$service:"
+	
+	fi
+	case $service in
+		("activate"|"create")
+			_arguments \
+				':environment:( $(_list_all_environments) )'
+			;;
+		("destroy"|"rename")
+			_arguments \
+				':environment:( $(_list_unmounted_environments) )'
+			;;
+		("list"|"install")
+			_message "no more arguments"
+			;;
+		(*)
+			_message "unknown zbectl subcommand: $service"
+			;;
+	esac
+}
+
+_zbectl "$@"
