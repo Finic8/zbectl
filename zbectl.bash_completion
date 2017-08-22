@@ -1,0 +1,35 @@
+#!/bin/bash
+
+GRUBCFG=/boot/efi/grub/grub.cfg
+
+_get_pool() {
+	mount | awk -F/ '/ \/ / {print $1}'
+}
+
+_list_all_environments() {
+	zfs list -H -r -o name "$(_get_pool)"/ROOT | awk -F/ '{if (NF == 3) print $NF}'
+}
+
+_list_unmounted_environments() {
+	zfs list -H -r -o mounted,name "$(_get_pool)"/ROOT | awk -F/ '/^no/{if (NF == 3) print $NF}'
+}
+
+_zbectl() {
+	local cur=${COMP_WORDS[COMP_CWORD]} 
+	local prev=${COMP_WORDS[COMP_CWORD-1]} 
+	case "$prev" in
+		activate|create)
+			COMPREPLY=( $(compgen -W "$(_list_all_environments)" -- $cur ) )
+			;;
+		destroy|rename)
+			COMPREPLY=( $(compgen -W "$(_list_unmounted_environments)" -- $cur ) )
+			;;
+		zbectl)
+			COMPREPLY=( $(compgen -W "activate create destroy install list rename" -- $cur) )
+
+			;;
+	esac
+
+}
+
+complete -F _zbectl zbectl
