@@ -14,6 +14,13 @@ _list_unmounted_environments() {
 	zfs list -H -r -o mounted,name "$(_get_pool)"/ROOT | awk -F/ '/^no/{if (NF == 3) print $NF}'
 }
 
+_determine_destroyable() {
+	destroyable=$(_list_unmounted_environments)
+	for env in ${@}; do
+		destroyable=$(printf "%s \n" $destroyable | grep -vw "$env")
+	done
+}
+
 subcmds=( "activate" "create" "destroy" "rename" "list" "install" )
 
 _zbectl() {
@@ -37,10 +44,18 @@ _zbectl() {
 			_arguments \
 				':environment:( $(_list_all_environments) )'
 			;;
-		("destroy"|"rename")
+		("destroy")
+			_determine_destroyable ${words[@]}
+			if [[ -z $destroyable ]]; then
+				_message "no more environments"
+			else
+				_arguments \
+					'*::environment:( $(echo $destroyable) )'
+			fi
+			;;
+		("rename")
 			_arguments \
 				':environment:( $(_list_unmounted_environments) )'
-			;;
 		("list"|"install")
 			_message "no more arguments"
 			;;

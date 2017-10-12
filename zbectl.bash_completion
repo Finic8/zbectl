@@ -13,23 +13,32 @@ _list_all_environments() {
 _list_unmounted_environments() {
 	zfs list -H -r -o mounted,name "$(_get_pool)"/ROOT | awk -F/ '/^no/{if (NF == 3) print $NF}'
 }
-
+_list_destroyable() {
+	shift 2
+	local environments=$(_list_unmounted_environments)
+	for env in ${@}; do
+		environments=$(printf "%s\n" $environments | grep -vw "$env")
+	done
+	echo $environments
+}
 _zbectl() {
 	local cur=${COMP_WORDS[COMP_CWORD]} 
 	local prev=${COMP_WORDS[COMP_CWORD-1]} 
+
+	if [[ $COMP_CWORD -eq 1 ]]; then
+		COMPREPLY=( $(compgen -W "activate create destroy install list rename" -- $cur) )
+	elif [[ ${COMP_WORDS[1]} == destroy ]]; then
+		COMPREPLY=( $(compgen -W "$(_list_destroyable ${COMP_WORDS[@]})" -- $cur ) )
+	else
 	case "$prev" in
 		activate|create)
 			COMPREPLY=( $(compgen -W "$(_list_all_environments)" -- $cur ) )
 			;;
-		destroy|rename)
+		rename)
 			COMPREPLY=( $(compgen -W "$(_list_unmounted_environments)" -- $cur ) )
 			;;
-		zbectl)
-			COMPREPLY=( $(compgen -W "activate create destroy install list rename" -- $cur) )
-
-			;;
 	esac
-
+fi
 }
 
 complete -F _zbectl zbectl

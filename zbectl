@@ -22,7 +22,7 @@ usage() {
 	echo "zbectl list"
 	echo "zbectl create [source] <target>"
 	echo "zbectl rename [source] <target>"
-	echo "zbectl destroy <target>"
+	echo "zbectl destroy <target>..."
 	echo "zbectl activate [target]"
 	echo "zbectl install [grub arguments]"
 	exit 0
@@ -33,7 +33,7 @@ die() {
 	# 1st arg is the exitcode, others will be printed
 	ERROR_CODE=$1
 	shift
-	printf %"s\n" "ERROR: ${@}"
+	printf "%s\n" "ERROR: ${@}"
 	exit "$ERROR_CODE"
 }
 
@@ -94,6 +94,16 @@ create_clone() {
 	zfs snapshot -r $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET
 	zfs clone -o canmount=noauto -o mountpoint=/ $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET $POOL/ROOT/$TARGET
 }
+promote_clones() {
+	local TARGET=${1}
+	zfs list -H -t all -o name,origin -r ${POOL} | while read NAME ORIGIN
+	do
+		if echo "${ORIGIN}" | grep -q -E "${POOL}/ROOT/${TARGET}(/.*@|@)" 2> /dev/null
+		then
+			zfs promote ${NAME}
+		fi
+	done
+}
 update_grub() {
 	grub-mkconfig -o $GRUBCFG &> /dev/null
 	exit 0
@@ -116,19 +126,16 @@ else
 fi
 if [ $1 == 'destroy' ]
 then
-	[ $# -ne 2 ] && usage
-	TARGET=$(basename "${2}")
-	check_env_exist $TARGET
-	check_env_in_use $TARGET
-	# promote dependent clones
-	zfs list -H -t all -o name,origin -r ${POOL} | while read NAME ORIGIN
+	[ $# -lt 2 ] && usage
+	shift
+	for TARGET in ${@};
 	do
-		if echo "${ORIGIN}" | grep -q -E "${POOL}/ROOT/${TARGET}(/.*@|@)" 2> /dev/null
-		then
-			zfs promote ${NAME}
-		fi
+		TARGET=$(basename "${TARGET}")
+		check_env_exist $TARGET
+		check_env_in_use $TARGET
+		promote_clones $TARGET
+		zfs destroy -r $POOL/ROOT/$TARGET
 	done
-	zfs destroy -r $POOL/ROOT/$TARGET
 	update_grub
 	
 elif [ $1 == 'create' ]
