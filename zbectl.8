@@ -14,6 +14,8 @@ zbectl - Control ZFS Boot Environments
 
 \fBzbectl activate\fB \fItarget\fI
 
+\fBzbectl update\fB
+
 \fBzbectl install\fB \fI[grub arguments]\fI
 
 .SH DESCRIPTION
@@ -44,6 +46,9 @@ Lists available environments.
 .TP
 \fBzbectl activate\fB \fItarget\fI
 Sets the \fItarget\fR as the default boot entry. Note that the entire name is not requirred, as long as the script can figure out which environment is ment.
+.TP
+\fBzbectl update\fB
+Updates \fIgrub.cfg\fR.
 .TP
 \fBzbectl install\fB \fR[\fIgrub arguments\fR]
 Installs grub to efi partition and updates \fIgrub.cfg\fR. Additional arguments are passed to \fBgrub-install\fR.

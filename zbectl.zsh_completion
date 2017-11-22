@@ -21,7 +21,7 @@ _determine_destroyable() {
 	done
 }
 
-subcmds=( "activate" "create" "destroy" "rename" "list" "install" )
+subcmds=( "activate" "create" "destroy" "rename" "list" "install" "update" )
 
 _zbectl() {
 #	typeset -A opt_args
@@ -56,7 +56,7 @@ _zbectl() {
 		("rename")
 			_arguments \
 				':environment:( $(_list_unmounted_environments) )'
-		("list"|"install")
+		("list"|"install"|"update")
 			_message "no more arguments"
 			;;
 		(*)

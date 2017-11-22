@@ -24,6 +24,7 @@ usage() {
 	echo "zbectl rename [source] <target>"
 	echo "zbectl destroy <target>..."
 	echo "zbectl activate [target]"
+	echo "zbectl update"
 	echo "zbectl install [grub arguments]"
 	exit 0
 }
@@ -176,6 +177,10 @@ then
 	ln -sf /dev/null /etc/grub.d/10_linux
 	# trigger the newly installed udev rule
 	udevadm trigger
+	update_grub
+
+elif [ $1 == 'update' ]
+then
 	update_grub
 
 elif [ $1 == 'activate' ]

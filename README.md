@@ -46,6 +46,9 @@ Lists available environments.
 ### zbectl activate target
 Sets the target as the default boot entry. Note that the entire name is not requirred, as long as the script can figure out which environment is ment.
 
+### zbectl update
+Updates grub.cfg.
+
 ### zbectl install [grub arguments]
 Installs grub to /boot/efi and and updates the config. Additional arguments are passed to grub-install.
 

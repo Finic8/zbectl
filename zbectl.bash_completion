@@ -26,7 +26,7 @@ _zbectl() {
 	local prev=${COMP_WORDS[COMP_CWORD-1]} 
 
 	if [[ $COMP_CWORD -eq 1 ]]; then
-		COMPREPLY=( $(compgen -W "activate create destroy install list rename" -- $cur) )
+		COMPREPLY=( $(compgen -W "activate create destroy install list rename update" -- $cur) )
 	elif [[ ${COMP_WORDS[1]} == destroy ]]; then
 		COMPREPLY=( $(compgen -W "$(_list_destroyable ${COMP_WORDS[@]})" -- $cur ) )
 	else
