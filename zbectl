@@ -106,7 +106,11 @@ promote_clones() {
 	done
 }
 update_grub() {
-	grub-mkconfig -o $GRUBCFG &> /dev/null
+	ln -sf /dev/null /etc/grub.d/10_linux
+	if ! grub-mkconfig -o $GRUBCFG &>/dev/null
+	then
+		die 1 "Updating grub unsuccessful"
+	fi
 	exit 0
 }
 
@@ -114,7 +118,6 @@ if [ $1 == 'list' ]
 then
 	zfs list -r -o name,used,available,referenced,mounted "$POOL"/ROOT
 	echo
-	# determine default
 	if [ ! -s $GRUBCFG ];
 	then
 		die 1 "grub.cfg does not exist. Run zbectl install first"
