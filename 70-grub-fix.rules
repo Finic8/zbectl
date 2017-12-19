@@ -2,6 +2,12 @@ ENV{DEVTYPE}=="partition", IMPORT{parent}="ID_*", \
 ENV{ID_FS_TYPE}=="zfs_member", \
 SYMLINK+="$env{ID_FS_UUID}"
 
+KERNEL!="nvme*", \
 ENV{DEVTYPE}=="partition", IMPORT{parent}="ID_*", \
 ENV{ID_FS_TYPE}=="zfs_member", \
 SYMLINK+="$env{ID_BUS}-$env{ID_SERIAL} $env{ID_BUS}-$env{ID_SERIAL}-part%n"
+
+KERNEL=="nvme*", \
+ENV{DEVTYPE}=="partition", IMPORT{parent}="ID_*", \
+ENV{ID_FS_TYPE}=="zfs_member", \
+SYMLINK+="nvme-$env{ID_SERIAL} nvme-$env{ID_SERIAL}-part%n"
