@@ -91,9 +91,10 @@ check_env_in_use() {
 }
 create_clone() {
 	# create a clone of the $TARGET boot environment
-	FMT=$(date "+%Y-%m-%d-%H:%M:%S")
-	zfs snapshot -r $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET
-	zfs clone -o canmount=noauto -o mountpoint=/ $POOL/ROOT/$SOURCE@zbectl_${FMT}_$TARGET $POOL/ROOT/$TARGET
+	SNAPSHOT=$POOL/ROOT/$SOURCE@zbectl_$(date "+%Y-%m-%d-%H:%M:%S")_$TARGET
+	zfs snapshot -r $SNAPSHOT
+	zfs clone -o canmount=noauto -o mountpoint=/ $SNAPSHOT $POOL/ROOT/$TARGET
+	zfs destroy -r $SNAPSHOT
 }
 promote_clones() {
 	local TARGET=${1}
