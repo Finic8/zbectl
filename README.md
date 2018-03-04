@@ -10,15 +10,6 @@ GRUB is used to boot the different environments.
 * GRUB has to be used as the bootloader.
 * The script assumes that your Boot Environments are located under poolname/ROOT/.
 
-
-__To Be Noted__
-
-The GRUB package is unable to boot from ZFS as described on the Arch Wiki:
-
-<https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_ZFS#error:_failed_to_get_canonical_path_of>
-
-To avoid recompiling GRUB, this error gets resolved by a udev rule which creates a symlink.
-
 ## Installation
 Simply install the package from the aur.
 Then run: 
