@@ -186,6 +186,7 @@ then
 elif [ $1 == 'activate' ]
 then
 	[ $# -gt 2 ] && usage
+	update_grub
 	ENTRIES="$(grep ^menuentry $GRUBCFG | cut -d "'" -f2)"
 	if [ $# -eq 1 ]
 	then
