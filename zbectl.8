@@ -18,13 +18,19 @@ zbectl - Control ZFS Boot Environments
 
 \fBzbectl install\fB \fI[grub arguments]\fI
 
+\fBzbectl install\fB \fI/dev/sdx [grub arguments]\fI
+
 .SH DESCRIPTION
 
 \fBzbectl\fR is a utility for managing \fIZFS Boot Environments\fR in Arch Linux.
 
-Boot entries for \fBgrub \fR are also created automatically.
+Boot entries for \fBgrub \fR are created automatically.
 
-The script assumes that your Boot Environments are located under \fIpoolname/ROOT/\fR and that your efi partition is mounted under \fI/boot/efi\fR.
+Boot Environments have to be located under \fIpoolname/ROOT/\fR.
+
+If you use EFI, the ESP partition must be mounted at \fI/boot/efi\fR.
+
+Detailed documentation available on: <https://github.com/Finic8/zbectl>
 
 .SS SUBCOMMANDS
 .TP
@@ -39,7 +45,7 @@ Creates a new ZFS Boot Environment named \fItarget\fR. If no \fIsource\fR enviro
 Renames the \fIsource\fR environment to \fItarget\fR.
 .TP
 \fBzbectl destroy\fB \fItarget...\fI
-Delets the \fItarget\fR environment(s).
+Delets the \fItarget\fR environment(s). Multiple targets can be specified.
 .TP
 \fBzbectl activate\fB
 Lists available environments.
@@ -48,10 +54,13 @@ Lists available environments.
 Sets the \fItarget\fR as the default boot entry. Note that the entire name is not requirred, as long as the script can figure out which environment is ment.
 .TP
 \fBzbectl update\fB
-Updates \fIgrub.cfg\fR.
+Updates \fIgrub.cfg\fR. Run this after a GRUB update.
 .TP
 \fBzbectl install\fB \fR[\fIgrub arguments\fR]
-Installs grub to efi partition and updates \fIgrub.cfg\fR. Additional arguments are passed to \fBgrub-install\fR.
+For EFI booting only. Installs grub to efi partition and updates \fIgrub.cfg\fR. Additional arguments are passed to \fBgrub-install\fR.
+.TP
+\fBzbectl install\fB \fI/dev/sdx \fR[\fIgrub arguments\fR]
+For BIOS booting only. Installs grub to \fI/dev/sdx\fR and updates \fIgrub.cfg\fR. Additional arguments are passed to \fBgrub-install\fR.
 
 .SH EXIT CODES
 The following exit codes are returned:

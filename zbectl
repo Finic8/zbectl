@@ -44,8 +44,13 @@ check_root() {
 	fi
 }
 ROOTFS=$( mount | awk '/ \/ / {print $1}' )
+EFI=false
 ESP=/boot/efi
-GRUBCFG=$ESP/grub/grub.cfg
+GRUBCFG=/boot/grub/grub.cfg
+if $(mount | grep "${ESP}" -q); then
+	EFI=true
+	GRUBCFG=$ESP/grub/grub.cfg
+fi
 
 if echo ${ROOTFS} | grep -q "^/dev/"
 then
@@ -108,7 +113,7 @@ promote_clones() {
 }
 update_grub() {
 	ln -sf /dev/null /etc/grub.d/10_linux
-	if ! ZPOOL_VDEV_NAME_PATH=1 grub-mkconfig -o $GRUBCFG &>/dev/null
+	if ! ZPOOL_VDEV_NAME_PATH=1 grub-mkconfig -o $GRUBCFG
 	then
 		die 1 "Updating grub unsuccessful"
 	fi
@@ -176,7 +181,11 @@ elif [ $1 == 'install' ]
 then
 	shift
 	GRUB_ARGS="$@"
-	grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP "${GRUB_ARGS}"
+	if [[ ${EFI} == true ]]; then
+		grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP "${GRUB_ARGS}"
+	else
+		grub-install --target=i386-pc "${GRUB_ARGS}"
+	fi
 	update_grub
 
 elif [ $1 == 'update' ]

@@ -8,30 +8,45 @@ GRUB is used to boot the different environments.
 zbectl does not use the __bootfs__ property. Instead it tells grub which entry to boot.
 
 ## Requirements
-* The EFI partition must be mounted under /boot/efi.
+* If you use EFI, the ESP partition must be mounted under `/boot/efi`.
 * GRUB has to be used as the bootloader.
-* Boot Environments are located under poolname/ROOT/.
+* Boot Environments are located under `poolname/ROOT/`.
 
 ## Installation
-Simply install the package from the aur.
-Then run: 
+Install the package `zbectl-git` from the aur: <https://aur.archlinux.org/packages/zbectl-git/>
+
+### EFI
+Make sure your ESP partition is mounted under /boot/efi. Then run:
 
     zbectl install
 
-It might be necessary to run this after a GRUB update as well.
+### Legacy
+Zbectl will automatically switch to BIOS booting if no efi partition is mounted:
+
+    zbectl install /dev/sda
+
+Where `/dev/sda` is the disk GRUB will be installed on.
+
+For additional information read:
+<https://wiki.archlinux.org/index.php/GRUB#BIOS_systems>
+
+### Manual
+If your manually install GRUB, run:
+
+    zbectl update
 
 ## Usage
 ### zbectl list
 Lists all ZFS Boot Environments.
 
 ### zbectl create [source] target
-Creates a new ZFS Boot Environment named target. If no source environment is provided, the booted environment will be used.
+Creates a new ZFS Boot Environment named target. This clones the source environment. If no source environment is provided, the booted environment will be used.
 
 ### zbectl rename source target
 Renames the source environment to target.
 
-### zbectl destroy target
-Delets the target environment.
+### zbectl destroy target...
+Delets the target environment(s). Multiple targets can be specified.
 
 ### zbectl activate
 Lists available environments.
@@ -40,10 +55,13 @@ Lists available environments.
 Sets the target as the default boot entry. Note that the entire name is not requirred, as long as the script can figure out which environment is ment.
 
 ### zbectl update
-Updates grub.cfg.
+Updates grub.cfg. Run this after a GRUB update.
 
 ### zbectl install [grub arguments]
-Installs grub to /boot/efi and and updates the config. Additional arguments are passed to grub-install.
+For EFI booting only. Installs grub to /boot/efi and and updates the config. Additional arguments are passed to grub-install.
+
+### zbectl install /dev/sdx [grub arguments]
+For BIOS booting. Installs grub to /dev/sdx and and updates the config. Additional arguments are passed to grub-install.
 
 ## Troubleshooting
 ### GRUB
