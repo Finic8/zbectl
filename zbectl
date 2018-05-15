@@ -99,7 +99,6 @@ create_clone() {
 	SNAPSHOT=$POOL/ROOT/$SOURCE@zbectl_$(date "+%Y-%m-%d-%H:%M:%S")_$TARGET
 	zfs snapshot -r $SNAPSHOT
 	zfs clone -o canmount=noauto -o mountpoint=/ $SNAPSHOT $POOL/ROOT/$TARGET
-	zfs destroy -r $SNAPSHOT
 }
 promote_clones() {
 	local TARGET=${1}
