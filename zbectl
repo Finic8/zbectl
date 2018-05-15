@@ -119,7 +119,9 @@ update_grub() {
 	exit 0
 }
 
-if [ $1 == 'list' ]
+subcmd=$1
+shift
+if [ $subcmd == 'list' ]
 then
 	zfs list -r -o name,used,available,referenced,mounted "$POOL"/ROOT
 	echo
@@ -130,13 +132,12 @@ then
 	DEFAULT="$(grep "^GRUB_DEFAULT=" /etc/default/grub)"
 	echo "Default entry: ${DEFAULT#GRUB_DEFAULT=}"
 	exit 0
-else
-	check_root
 fi
-if [ $1 == 'destroy' ]
-then
-	[ $# -lt 2 ] && usage
-	shift
+
+check_root
+case $subcmd in
+'destroy')
+	[ $# -lt 1 ] && usage
 	for TARGET in ${@};
 	do
 		TARGET=$(basename "${TARGET}")
@@ -146,28 +147,27 @@ then
 		zfs destroy -r $POOL/ROOT/$TARGET
 	done
 	update_grub
-	
-elif [ $1 == 'create' ]
-then
-	if [ $# -eq 3 ]
-	then
-		TARGET=$(basename "${3}")
-		check_target $TARGET
-		SOURCE=$(basename "${2}")
-		check_env_exist $SOURCE
-	elif [ $# -eq 2 ]
+	;;
+
+'create')
+	if [ $# -eq 2 ]
 	then
 		TARGET=$(basename "${2}")
-		check_target $TARGET
+		SOURCE=$(basename "${1}")
+		check_env_exist $SOURCE
+	elif [ $# -eq 1 ]
+	then
+		TARGET=$(basename "${1}")
 		SOURCE=$(basename "$ROOTFS")
 	else
 		usage
 	fi
+	check_target $TARGET
 	create_clone
 	update_grub
+	;;
 
-elif [ $1 == 'rename' ]
-then
+'rename')
 	SOURCE=$(basename "${2}")
 	check_env_exist $SOURCE
 	check_env_in_use $SOURCE
@@ -175,10 +175,9 @@ then
 	check_target $TARGET
 	zfs rename $POOL/ROOT/$SOURCE $POOL/ROOT/$TARGET
 	update_grub
+	;;
 
-elif [ $1 == 'install' ]
-then
-	shift
+'install')
 	GRUB_ARGS="$@"
 	if [[ ${EFI} == true ]]; then
 		grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP "${GRUB_ARGS}"
@@ -186,23 +185,23 @@ then
 		grub-install --target=i386-pc "${GRUB_ARGS}"
 	fi
 	update_grub
+	;;
 
-elif [ $1 == 'update' ]
-then
+'update')
 	update_grub
+	;;
 
-elif [ $1 == 'activate' ]
-then
-	[ $# -gt 2 ] && usage
+'activate')
+	[ $# -gt 1 ] && usage
 	update_grub
 	ENTRIES="$(grep ^menuentry $GRUBCFG | cut -d "'" -f2)"
-	if [ $# -eq 1 ]
+	if [ $# -eq 0 ]
 	then
 		echo "Avialiable environments:"
 		echo "$ENTRIES"
 		exit 0
 	fi
-	TARGET="${2}"
+	TARGET="${1}"
 	if ! ENTRY="$(echo "$ENTRIES" | grep "$TARGET")"
 	then
 		die 1 "No environment matches the provided name."
@@ -213,6 +212,8 @@ then
 	fi
 	sed -i "s/GRUB_DEFAULT.*/GRUB_DEFAULT=\"${ENTRY}\"/" /etc/default/grub
 	update_grub
-else
+	;;
+*)
 	usage
-fi
+	;;
+esac
