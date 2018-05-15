@@ -168,6 +168,7 @@ case $subcmd in
 	;;
 
 'rename')
+	[ $# -eq 2 ] || usage
 	SOURCE=$(basename "${2}")
 	check_env_exist $SOURCE
 	check_env_in_use $SOURCE
