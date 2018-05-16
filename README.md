@@ -57,6 +57,16 @@ Sets the target as the default boot entry. Note that the entire name is not requ
 ### zbectl update
 Updates grub.cfg. Run this after a GRUB update.
 
+### zbectl mount target [mountpoint]
+Mounts the target environment to /pool/ROOT/target or specified mountpoint.
+
+### zbectl unmount target
+Unmounts the target environment.
+
+### zbectl chroot target [command]
+Mounts the target environment to default mountpoint and chroots into it.
+Optionally specify command to run inside the chroot. The target gets unmounted after the command exits.
+
 ### zbectl install [grub arguments]
 For EFI booting only. Installs grub to /boot/efi and and updates the config. Additional arguments are passed to grub-install.
 

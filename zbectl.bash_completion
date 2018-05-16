@@ -13,6 +13,11 @@ _list_all_environments() {
 _list_unmounted_environments() {
 	zfs list -H -r -o mounted,name "$(_get_pool)"/ROOT | awk -F/ '/^no/{if (NF == 3) print $NF}'
 }
+
+_list_unmountable_environments() {
+	zfs list -H -r -o mounted,name,mountpoint "$(_get_pool)"/ROOT | awk '/^yes/ {if ($NF != "/") print $2}' | awk -F/ '{if (NF == 3) print $NF}'
+}
+
 _list_destroyable() {
 	shift 2
 	local environments=$(_list_unmounted_environments)
@@ -23,22 +28,40 @@ _list_destroyable() {
 }
 _zbectl() {
 	local cur=${COMP_WORDS[COMP_CWORD]} 
-	local prev=${COMP_WORDS[COMP_CWORD-1]} 
 
 	if [[ $COMP_CWORD -eq 1 ]]; then
-		COMPREPLY=( $(compgen -W "activate create destroy install list rename update" -- $cur) )
-	elif [[ ${COMP_WORDS[1]} == destroy ]]; then
-		COMPREPLY=( $(compgen -W "$(_list_destroyable ${COMP_WORDS[@]})" -- $cur ) )
+		COMPREPLY=( $(compgen -W "activate create destroy install list mount unmount chroot rename update" -- $cur) )
 	else
-	case "$prev" in
+	case ${COMP_WORDS[1]} in
+		destroy)
+			COMPREPLY=( $(compgen -W "$(_list_destroyable ${COMP_WORDS[@]})" -- $cur ) )
+			;;
+		mount)
+			if [[ $COMP_CWORD -eq 2 ]]; then
+				COMPREPLY=( $(compgen -W "$(_list_unmounted_environments)" -- $cur ) )
+			elif [[ $COMP_CWORD -eq 3 ]]; then
+				compopt -o dirnames
+				COMPREPLY=()
+			fi
+			;;
+		chroot)
+			if [[ $COMP_CWORD -eq 2 ]]; then
+				COMPREPLY=( $(compgen -W "$(_list_unmounted_environments)" -- $cur ) )
+			elif [[ $COMP_CWORD -eq 3 ]]; then
+				COMPREPLY=( $(compgen -c -- $cur ) )
+			fi
+			;;
 		activate|create)
 			COMPREPLY=( $(compgen -W "$(_list_all_environments)" -- $cur ) )
 			;;
 		rename)
 			COMPREPLY=( $(compgen -W "$(_list_unmounted_environments)" -- $cur ) )
 			;;
+		unmount)
+			COMPREPLY=( $(compgen -W "$(_list_unmountable_environments)" -- $cur ) )
+			;;
 	esac
-fi
+	fi
 }
 
 complete -F _zbectl zbectl

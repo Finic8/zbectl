@@ -24,6 +24,9 @@ usage() {
 	echo "zbectl rename [source] <target>"
 	echo "zbectl destroy <target>..."
 	echo "zbectl activate [target]"
+	echo "zbectl mount <target> <mountpoint>"
+	echo "zbectl unmount <target>"
+	echo "zbectl chroot <target> [command]"
 	echo "zbectl update"
 	echo "zbectl install [grub arguments]"
 	exit 0
@@ -110,6 +113,23 @@ promote_clones() {
 		fi
 	done
 }
+mount_env() {
+	[ $# -gt 2 ] && usage
+	TARGET=$1
+	check_env_exist $TARGET
+	MNT=/$POOL/ROOT/$TARGET
+	[ $# -eq 2 ] && MNT=$2
+
+	zfs set mountpoint=$MNT $POOL/ROOT/$TARGET
+	zfs mount $POOL/ROOT/$TARGET
+}
+unmount_env() {
+	[ $# -gt 1 ] && usage
+	TARGET=$1
+	check_env_exist $TARGET
+	zfs unmount $POOL/ROOT/$TARGET
+	zfs set mountpoint=/ $POOL/ROOT/$TARGET
+}
 update_grub() {
 	ln -sf /dev/null /etc/grub.d/10_linux
 	if ! ZPOOL_VDEV_NAME_PATH=1 grub-mkconfig -o $GRUBCFG
@@ -190,6 +210,22 @@ case $subcmd in
 
 'update')
 	update_grub
+	;;
+
+'mount')
+	mount_env ${@}
+	;;
+
+'unmount')
+	unmount_env ${@}
+	;;
+'chroot')
+	[ $# -lt 1 ] && usage
+	TARGET=$1
+	shift
+	mount_env $TARGET
+	arch-chroot /$POOL/ROOT/$TARGET ${@}
+	unmount_env $TARGET
 	;;
 
 'activate')
