@@ -47,13 +47,11 @@ check_root() {
 	fi
 }
 ROOTFS=$( mount | awk '/ \/ / {print $1}' )
-EFI=false
-ESP=/boot/efi
+ESPS=/boot/efi
 GRUBCFG=/boot/grub/grub.cfg
-if $(mount | grep "${ESP}" -q); then
-	EFI=true
-	GRUBCFG=$ESP/grub/grub.cfg
-fi
+
+EFI=false
+[[ -d /sys/firmware/efi ]] && EFI=true
 
 if echo ${ROOTFS} | grep -q "^/dev/"
 then
@@ -130,9 +128,33 @@ unmount_env() {
 	zfs unmount $POOL/ROOT/$TARGET
 	zfs set mountpoint=/ $POOL/ROOT/$TARGET
 }
+
+parent_devices() {
+	for device in $(zdb -C $POOL | awk -F\' '/path/{print $2}')
+	do
+		lsblk -pno PKNAME ${device}
+	done
+}
+mount_esps() {
+	# mounts each esp partition under $ESPS/PARTUUID and returns mountpoints
+	[[ -d $ESPS ]] || mkdir $ESPS
+	for parent in $(parent_devices)
+	do
+		local ESP_PARTUUID="$(lsblk -nfr -o PARTUUID,FSTYPE $parent | awk '/fat/{print $1}')"
+		local ESP_MNT=$ESPS/$ESP_PARTUUID
+		echo $ESP_MNT
+
+		[[ -d $ESP_MNT ]] || mkdir $ESP_MNT
+		mount /dev/disk/by-partuuid/$ESP_PARTUUID $ESP_MNT
+	done
+}
 update_grub() {
 	ln -sf /dev/null /etc/grub.d/10_linux
-	if ! ZPOOL_VDEV_NAME_PATH=1 grub-mkconfig -o $GRUBCFG
+	if [[ "$EFI" == true ]]
+	then
+		GRUBCFG=$(mount_esps | sed -e 's/$/\/grub\/grub.cfg/')
+	fi
+	if ! ZPOOL_VDEV_NAME_PATH=1 grub-mkconfig | tee $GRUBCFG >/dev/null
 	then
 		die 1 "Updating grub unsuccessful"
 	fi
@@ -200,11 +222,22 @@ case $subcmd in
 
 'install')
 	GRUB_ARGS="$@"
-	if [[ ${EFI} == true ]]; then
-		grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP "${GRUB_ARGS}"
+
+	if [[ "$EFI" == true ]]; then
+		for ESP in $(mount_esps)
+		do
+			echo "Installing to: $ESP"
+			grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP "${GRUB_ARGS}"
+
+		done
 	else
-		grub-install --target=i386-pc "${GRUB_ARGS}"
+		for device in parent_devices
+		do
+			echo "Installing to: $device"
+			grub-install --target=i386-pc "$device" "${GRUB_ARGS}"
+		done
 	fi
+
 	update_grub
 	;;
 
