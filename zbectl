@@ -147,48 +147,46 @@ mount_esps() {
 
 		[[ -d $ESP_MNT ]] || mkdir $ESP_MNT
 		mount /dev/disk/by-partuuid/$ESP_PARTUUID $ESP_MNT
+		[[ $? ]] || die 3 "error mounting esp located on parent device: '$parent'"
+	done
+}
+validate_device_paths() {
+	# validates devices and returns their paths
+	for device in ${@}
+	do
+		if fdisk -l $device &>/dev/null
+		then
+			echo $device
+		elif fdisk -l /dev/$device &>/dev/null
+		then
+			echo "/dev/$device"
+		else
+			die 3 "device: '$device' not valid"
+		fi
 	done
 }
 partition_device() {
 	local device=$1
-	if [[ $EFI == true ]]
-	then
-		echo "Parttioning device: '$device' for EFI use"
-	else
-		echo "Parttioning device: '$device' for BIOS use"
-	fi
-	if !fdisk -l $device 1>/dev/null
-	then
-		device="/dev/$device"
-		fdisk -l $device 1>/dev/null
-	fi
-	[[ $? ]] || die 3 "device: '$1' not valid"
-	(
-	echo g # new GPT table
-	echo n # BIOS/EFI partition
-	echo 1 # partition number
-	echo   # start at beginning
-	if [[ $EFI == true ]]
-	then
-		echo +200M # size of EFI partition
-		echo t # set type
-		echo 1 # select EFI
-	else
-		echo +2M # size of BIOS partition
-		echo t # set type
-		echo 4 # selct BIOS
-	fi
-	echo n # new zfs partition
-	echo 2 # partition number
-	echo # start directly after first partition
-	echo # fill entire disk
-	echo t # set type
-	echo 2 # select partition
-	echo 48 # select ZFS
-	echo w # write changes
-	) | fdisk $device 1>/dev/null
 
-	[[ $? ]] || die 3 "error paritioning device: '$device'"
+	if [[ $EFI == true ]]
+	then
+		sgdisk --clear \
+			--new=1:0:256M --typecode=1:ef00 \
+			--largest-new=2 --typecode:2:bf01 \
+			$device 1>/dev/null
+
+		[[ $? ]] || die 3 "error paritioning device: '$device'"
+
+		mkfs.fat -F32 $(fdisk -l $device | awk '/EFI System/{print $1}') 1>/dev/null
+		[[ $? ]] || die 3 "error creating EFI filesystem: '$device'"
+	else
+		sgdisk --clear \
+			--new=1:0:2M --typecode=1:ef02 \
+			--largest-new=2 --typecode:2:bf01 \
+			$device 1>/dev/null
+
+		[[ $? ]] || die 3 "error paritioning device: '$device'"
+	fi
 }
 update_grub() {
 	ln -sf /dev/null /etc/grub.d/10_linux
@@ -196,11 +194,8 @@ update_grub() {
 	then
 		GRUBCFG=$(mount_esps | sed -e 's/$/\/grub\/grub.cfg/')
 	fi
-	if ! ZPOOL_VDEV_NAME_PATH=1 grub-mkconfig | tee $GRUBCFG >/dev/null
-	then
-		die 1 "Updating grub unsuccessful"
-	fi
-	exit 0
+	ZPOOL_VDEV_NAME_PATH=1 grub-mkconfig | tee $GRUBCFG >/dev/null
+	[[ $? ]] || die 1 "Updating grub unsuccessful"
 }
 
 subcmd=$1
@@ -269,36 +264,32 @@ case $subcmd in
 		for ESP in $(mount_esps)
 		do
 			echo "Installing to: $ESP"
-			grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP ${GRUB_ARGS}
+			ZPOOL_VDEV_NAME_PATH=1 grub-install --target=x86_64-efi --efi-directory=$ESP --boot-directory=$ESP ${GRUB_ARGS}
 			[[ $? ]] || die 3 "Installing grub failed"
 		done
 	else
 		for device in $(parent_devices)
 		do
 			echo "Installing to: $device"
-			grub-install --target=i386-pc ${GRUB_ARGS} $device
+			ZPOOL_VDEV_NAME_PATH=1 grub-install --target=i386-pc ${GRUB_ARGS} $device
 			[[ $? ]] || die 3 "Installing grub failed"
 		done
 	fi
-
 	update_grub
 	;;
 'partition')
-	devices=${@}
+	[[ $# -lt 1 ]] && usage
+
+	devices="$(validate_device_paths ${@})"
 	for device in ${devices}
 	do
 		partition_device $device
 	done
 	echo "Create your pool over the following devices:"
-	lsblk -fl -o NAME,PARTUUID,FSTYPE ${devices} |
-		awk '/zfs_member/{
-			if ($1 == "NAME") {print $0};
-			if ($2 != "zfs_member") {print $1, $2}
-		}'
-	if [[ $EFI == true ]]
-	then
-		mount_esps
-	fi
+	lsblk -pl -o NAME,PARTUUID,FSTYPE,TYPE ${devices} |
+		awk '!/disk|vfat/{print $1, $2}' | column -t
+
+	[[ "$EFI" == true ]] && mount_esps
 	#echo "Make sure to bootstrap your OS to yourpool/ROOT/yourenvironment"
 	;;
 'update')
