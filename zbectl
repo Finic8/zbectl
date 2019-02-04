@@ -29,7 +29,8 @@ usage() {
 	echo "zbectl chroot <target> [command]"
 	echo "zbectl update"
 	echo "zbectl install [grub arguments]"
-	exit 0
+	echo "zbectl partition <device>..."
+	exit 2
 }
 [ $# -eq 0 ] && usage
 
@@ -43,7 +44,7 @@ die() {
 
 check_root() {
 	if [ $(id -u) != 0 ]; then
-		die 1 "Must be ran as root"
+		die 2 "Must be ran as root"
 	fi
 }
 ROOTFS=$( mount | awk '/ \/ / {print $1}' )
@@ -172,7 +173,7 @@ partition_device() {
 	then
 		sgdisk --clear \
 			--new=1:0:256M --typecode=1:ef00 \
-			--largest-new=2 --typecode:2:bf01 \
+			--largest-new=2 --typecode:2:bf00 \
 			$device 1>/dev/null
 
 		[[ $? ]] || die 3 "error paritioning device: '$device'"
@@ -182,7 +183,7 @@ partition_device() {
 	else
 		sgdisk --clear \
 			--new=1:0:2M --typecode=1:ef02 \
-			--largest-new=2 --typecode:2:bf01 \
+			--largest-new=2 --typecode:2:bf00 \
 			$device 1>/dev/null
 
 		[[ $? ]] || die 3 "error paritioning device: '$device'"
@@ -288,9 +289,6 @@ case $subcmd in
 	echo "Create your pool over the following devices:"
 	lsblk -pl -o NAME,PARTUUID,FSTYPE,TYPE ${devices} |
 		awk '!/disk|vfat/{print $1, $2}' | column -t
-
-	[[ "$EFI" == true ]] && mount_esps
-	#echo "Make sure to bootstrap your OS to yourpool/ROOT/yourenvironment"
 	;;
 'update')
 	update_grub
