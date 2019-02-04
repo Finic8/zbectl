@@ -1,39 +1,85 @@
 # zbectl
 
 ## Functionality
-zbectl is a utility for managing ZFS Boot Environments in Arch Linux.
+zbectl is a utility for managing ZFS Boot Environments in Arch Linux similar to beadm on FreeBSD.
 
 GRUB is used to boot the different environments.
 
-zbectl does not use the __bootfs__ property. Instead it tells grub which entry to boot.
 
-## Requirements
-* If you use EFI, the ESP partition must be mounted under `/boot/efi`.
-* GRUB has to be used as the bootloader.
+## Architecture
+* GRUB is used as the bootloader.
+* zbectl __does not use the bootfs__ property. Instead it tells grub which entry to boot.
 * Boot Environments are located under `poolname/ROOT/`.
+For example: if your pool is named `zroot` then the environment called `default` is located under `zroot/ROOT/default`
+### ESP mountpoints
+* Each pool device has an [ESP](https://wiki.archlinux.org/index.php/EFI_system_partition)
+* ESPs are automatically mounted under /boot/efi/<partuuid>
 
 ## Installation
-Install the package `zbectl-git` from the aur: <https://aur.archlinux.org/packages/zbectl-git/>
+- If you have never installed Arch before please read the [installation guide](https://wiki.archlinux.org/index.php/installation_guide) first, so you`ll have a general idea of the requiered steps.
+- Then follow the instuctions on the Arch Wiki for creating an archiso with zfs support: https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_ZFS
+- Include the package `zbectl-git` from the aur: <https://aur.archlinux.org/packages/zbectl-git/>
+or build inside the livesystem once you have bootet it.
 
-### EFI
-Make sure your ESP partition is mounted under /boot/efi. Then run:
+### Partition layout
+#### Automatic
+Since version 2.0 zbectl can automatically partition your devices.
+This works for EFI and BIOS systems. Make sure to boot your archiso in the same mode you want your installed system to boot! Simply run:
 
-    zbectl install
+    zbectl partition <your device>...
+For example if you want to use the two disks `sda and sdb` run:
 
-### Legacy
-Zbectl will automatically switch to BIOS booting if no efi partition is mounted:
+    zbectl partition sda sdb
 
-    zbectl install /dev/sda
+This will create the following layout on your devices.
 
-Where `/dev/sda` is the disk GRUB will be installed on.
-
-For additional information read:
-<https://wiki.archlinux.org/index.php/GRUB#BIOS_systems>
+BIOS
+```
+Part     Size   Type
+----     ----   -------------------------
+   1       2M   BIOS boot partition (ef02)
+   2     XXXG   Solaris Root (bf00)
+```
+UEFI
+```
+Part     Size   Type
+----     ----   -------------------------
+   1     256M   EFI boot partition (ef00)
+   2     XXXG   Solaris Root (bf00)
+```
+This will also create the requirred fat filesystem on your ESPs.
 
 ### Manual
-If your manually install GRUB, run:
+If want to manually partition your devices please keep in mind that zbectl expects your ESP/BIOS partitions to be on the same parent device as you pool. The following steps assume you have already created a fat filesystm on each of your ESPs.
 
-    zbectl update
+### Installing your system
+- Create your pool according to your desired layout over the partuuids returned to you by the `zbectl partition` command above. If you manually partitioned your devices you should know the right ids to use.
+
+Please create your pool according to the guidelines on the [wiki](https://wiki.archlinux.org/index.php/ZFS#GRUB-compatible_pool_creation) to avoid grub not beeing able to boot from your pool.
+
+Set the pool/dataset properties like ashift and compression according to your preference/use case.
+
+- The only absolutely necessary datasets are the following:
+```
+zfs create <your_pool>/ROOT
+zfs create -o mountpoint=/ <your_pool>/ROOT/<environment_name>
+```
+For example if your pool is named `zroot` and your environment `default` run:
+```
+zfs create zroot/ROOT
+zfs create -o mountpoint=/ zroot/ROOT/default
+```
+- To avoid the pacman cache cluttering up your environments I recomend creating the following dataset:
+```
+zfs create -o mountpoint=/var/cache/pacman/pkg zroot/pkgcache
+```
+- Follow <https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_ZFS#Setup_the_ZFS_filesystem> until the bootloader secion.
+- chroot into your new system and install [zbectl-git](https://aur.archlinux.org/packages/zbectl-git) from the aur.
+- Run
+```
+zbectl install
+```
+- Continue with <https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_ZFS#Unmount_and_restart>.
 
 ## Usage
 ### zbectl list
@@ -68,10 +114,15 @@ Mounts the target environment to default mountpoint and chroots into it.
 Optionally specify command to run inside the chroot. The target gets unmounted after the command exits.
 
 ### zbectl install [grub arguments]
-For EFI booting only. Installs grub to /boot/efi and and updates the config. Additional arguments are passed to grub-install.
+Installs grub to all pool devices and and updates the grub.cfg. Additional arguments are passed to grub-install.
 
-### zbectl install /dev/sdx [grub arguments]
-For BIOS booting. Installs grub to /dev/sdx and and updates the config. Additional arguments are passed to grub-install.
+### zbectl partition [device]...
+This will automatically partition your devices for EFI/BIOS booting.
+Devices can be specified as abolute paths like `/dev/sda` or just the devicename like `sda`.
+
+If your system is bootet in EFI mode this will create a 256M ESP partition and a second partition for zfs on the specified devices.
+
+In BIOS mode a BIOS boot partition for grub, and a second partition for zfs will be created.
 
 ## Troubleshooting
 ### GRUB
@@ -88,6 +139,10 @@ The package includes a udev rule which creates symlinks. Run the following to ac
 ## Exit Codes
 The following exit codes are returned:
 
-0      Successful execution.
+0   Successful execution.
 
-1      An error occurred.
+1   An error occurred.
+
+2   Invalid arguments or insufficient permissions.
+
+3   A device related error occurred.
