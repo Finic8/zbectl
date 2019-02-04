@@ -68,6 +68,10 @@ _zbectl() {
 		("list"|"install"|"update")
 			_message "no more arguments"
 			;;
+		("partition")
+			_path_files
+
+			;;
 		(*)
 			_message "unknown zbectl subcommand: $service"
 			;;
