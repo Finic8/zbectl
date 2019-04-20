@@ -32,7 +32,7 @@ usage() {
 	echo "zbectl partition <device>..."
 	exit 2
 }
-[ $# -eq 0 ] && usage
+[[ $# -eq 0 ]] && usage
 
 die() {
 	# 1st arg is the exitcode, others will be printed
@@ -43,7 +43,7 @@ die() {
 }
 
 check_root() {
-	if [ $(id -u) != 0 ]; then
+	if [[ $(id -u) != 0 ]]; then
 		die 2 "Must be ran as root"
 	fi
 }
@@ -61,7 +61,7 @@ fi
 
 POOL=$( echo ${ROOTFS} | awk -F '/' '{print $1}' )
 
-if [ $( echo ${ROOTFS} | awk -F '/' '{print NF}' ) -lt 3 ]
+if [[ $( echo ${ROOTFS} | awk -F '/' '{print NF}' ) -lt 3 ]]
 then
 	die 1 "This system is not configured for boot environments"
 fi
@@ -91,7 +91,7 @@ check_env_exist() {
 }
 check_env_in_use() {
 	local TARGET=${1}
-	if [ "$POOL/ROOT/$TARGET" == $ROOTFS ]
+	if [[ "$POOL/ROOT/$TARGET" == $ROOTFS ]]
 	then
 		die 1 "Target boot environment '$TARGET' is in use"
 	fi
@@ -113,17 +113,17 @@ promote_clones() {
 	done
 }
 mount_env() {
-	[ $# -gt 2 ] && usage
+	[[ $# -gt 2 ]] && usage
 	TARGET=$1
 	check_env_exist $TARGET
 	MNT=/$POOL/ROOT/$TARGET
-	[ $# -eq 2 ] && MNT=$2
+	[[ $# -eq 2 ]] && MNT=$2
 
 	zfs set mountpoint=$MNT $POOL/ROOT/$TARGET
 	zfs mount $POOL/ROOT/$TARGET
 }
 unmount_env() {
-	[ $# -gt 1 ] && usage
+	[[ $# -gt 1 ]] && usage
 	TARGET=$1
 	check_env_exist $TARGET
 	zfs unmount $POOL/ROOT/$TARGET
@@ -201,11 +201,11 @@ update_grub() {
 
 subcmd=$1
 shift
-if [ $subcmd == 'list' ]
+if [[ $subcmd == 'list' ]]
 then
 	zfs list -r -o name,used,available,referenced,mounted "$POOL"/ROOT
 	echo
-	if [ ! -s $GRUBCFG ];
+	if [[ ! -s $GRUBCFG ]];
 	then
 		die 1 "grub.cfg does not exist. Run zbectl install first"
 	fi
@@ -217,7 +217,7 @@ fi
 check_root
 case $subcmd in
 'destroy')
-	[ $# -lt 1 ] && usage
+	[[ $# -lt 1 ]] && usage
 	for TARGET in ${@};
 	do
 		TARGET=$(basename "${TARGET}")
@@ -230,12 +230,12 @@ case $subcmd in
 	;;
 
 'create')
-	if [ $# -eq 2 ]
+	if [[ $# -eq 2 ]]
 	then
 		TARGET=$(basename "${2}")
 		SOURCE=$(basename "${1}")
 		check_env_exist $SOURCE
-	elif [ $# -eq 1 ]
+	elif [[ $# -eq 1 ]]
 	then
 		TARGET=$(basename "${1}")
 		SOURCE=$(basename "$ROOTFS")
@@ -248,7 +248,7 @@ case $subcmd in
 	;;
 
 'rename')
-	[ $# -eq 2 ] || usage
+	[[ $# -eq 2 ]] || usage
 	SOURCE=$(basename "${2}")
 	check_env_exist $SOURCE
 	check_env_in_use $SOURCE
@@ -302,7 +302,7 @@ case $subcmd in
 	unmount_env ${@}
 	;;
 'chroot')
-	[ $# -lt 1 ] && usage
+	[[ $# -lt 1 ]] && usage
 	TARGET=$1
 	shift
 	mount_env $TARGET
@@ -311,10 +311,10 @@ case $subcmd in
 	;;
 
 'activate')
-	[ $# -gt 1 ] && usage
+	[[ $# -gt 1 ]] && usage
 	update_grub
 	ENTRIES="$(grep ^menuentry $GRUBCFG | cut -d "'" -f2)"
-	if [ $# -eq 0 ]
+	if [[ $# -eq 0 ]]
 	then
 		echo "Avialiable environments:"
 		echo "$ENTRIES"
@@ -325,7 +325,7 @@ case $subcmd in
 	then
 		die 1 "No environment matches the provided name."
 	fi
-	if [ $(echo "$ENTRY" | wc -l) -gt 1 ]
+	if [[ $(echo "$ENTRY" | wc -l) -gt 1 ]]
 	then
 		die 1 "More than one environment matches the provided name:" "$ENTRY"
 	fi
