@@ -13,13 +13,12 @@ GRUB is used to boot the different environments.
 For example: if your pool is named `zroot` then the environment called `default` is located under `zroot/ROOT/default`
 ### ESP mountpoints
 * Each pool device has an [ESP](https://wiki.archlinux.org/index.php/EFI_system_partition)
-* ESPs are automatically mounted under /boot/efi/<partuuid>
+* ESPs are automatically mounted under `/boot/efi/<partuuid>`
 
 ## Installation
-- If you have never installed Arch before please read the [installation guide](https://wiki.archlinux.org/index.php/installation_guide) first, so you`ll have a general idea of the requiered steps.
-- Then follow the instuctions on the Arch Wiki for creating an archiso with zfs support: https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_ZFS
-- Include the package `zbectl-git` from the aur: <https://aur.archlinux.org/packages/zbectl-git/>
-or build inside the livesystem once you have bootet it.
+- If you have never installed Arch before please read the [installation guide](https://wiki.archlinux.org/index.php/installation_guide) first, so you'll have a general idea of the requiered steps.
+- Follow the instuctions on the Arch Wiki for creating an archiso with zfs support: <https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_ZFS>
+- Include the package [zbectl-git](https://aur.archlinux.org/packages/zbectl-git/) from the aur or build it inside the livesystem.
 
 ### Partition layout
 #### Automatic
@@ -118,9 +117,9 @@ Installs grub to all pool devices and and updates the grub.cfg. Additional argum
 
 ### zbectl partition [device]...
 This will automatically partition your devices for EFI/BIOS booting.
-Devices can be specified as abolute paths like `/dev/sda` or just the devicename like `sda`.
+Devices can be specified as absolute paths like `/dev/sda` or just the devicename like `sda`.
 
-If your system is bootet in EFI mode this will create a 256M ESP partition and a second partition for zfs on the specified devices.
+If your system is booted in EFI mode this will create a 256M ESP partition and a second partition for zfs on the specified devices.
 
 In BIOS mode a BIOS boot partition for grub, and a second partition for zfs will be created.
 
