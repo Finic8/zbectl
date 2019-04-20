@@ -26,7 +26,7 @@ Since version 2.0 zbectl can automatically partition your devices.
 This works for EFI and BIOS systems. Make sure to boot your archiso in the same mode you want your installed system to boot! Simply run:
 
     zbectl partition <your device>...
-For example if you want to use the two disks `sda and sdb` run:
+For example if you want to use the two disks `sda` and `sdb` run:
 
     zbectl partition sda sdb
 
@@ -49,7 +49,7 @@ Part     Size   Type
 This will also create the requirred fat filesystem on your ESPs.
 
 ### Manual
-If want to manually partition your devices please keep in mind that zbectl expects your ESP/BIOS partitions to be on the same parent device as you pool. The following steps assume you have already created a fat filesystm on each of your ESPs.
+If want to manually partition your devices please keep in mind that zbectl expects your ESP/BIOS partitions to be on the same parent device as you pool. The following steps assume you have already created a fat filesystem on each of your ESPs if using EFI.
 
 ### Installing your system
 - Create your pool according to your desired layout over the partuuids returned to you by the `zbectl partition` command above. If you manually partitioned your devices you should know the right ids to use.
