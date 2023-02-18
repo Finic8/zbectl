@@ -176,7 +176,7 @@ partition_device() {
 			--largest-new=2 --typecode:2:bf00 \
 			$device 1>/dev/null
 
-		[[ $? ]] || die 3 "error paritioning device: '$device'"
+		[[ $? ]] || die 3 "error partitioning device: '$device'"
 
 		mkfs.fat -F32 $(fdisk -l $device | awk '/EFI System/{print $1}') 1>/dev/null
 		[[ $? ]] || die 3 "error creating EFI filesystem: '$device'"
@@ -186,7 +186,7 @@ partition_device() {
 			--largest-new=2 --typecode:2:bf00 \
 			$device 1>/dev/null
 
-		[[ $? ]] || die 3 "error paritioning device: '$device'"
+		[[ $? ]] || die 3 "error partitioning device: '$device'"
 	fi
 }
 update_grub() {
@@ -316,7 +316,7 @@ case $subcmd in
 	ENTRIES="$(grep ^menuentry $GRUBCFG | cut -d "'" -f2)"
 	if [[ $# -eq 0 ]]
 	then
-		echo "Avialiable environments:"
+		echo "Available environments:"
 		echo "$ENTRIES"
 		exit 0
 	fi
