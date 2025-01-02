@@ -1,5 +1,10 @@
 # zbectl
 
+I wrote this tool some years ago when grub was the only bootloader that could boot a kernel directly form zfs.
+However, ensuring that a pool has only features enabled that grub supports is cumbersome and this setup generally proved to be not as reliable as I wanted.
+Nowdays using [zfsbootmenu](https://zfsbootmenu.org) offers a much better user experience in my opinion.
+In conclusion I'm happy if this tool was useful to you in the past, but I'm not planing on maintaining it further.
+
 ## Functionality
 zbectl is a utility for managing ZFS Boot Environments in Arch Linux similar to beadm on FreeBSD.
 
